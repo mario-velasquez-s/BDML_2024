@@ -6,6 +6,7 @@
 
 # Initial Setup -----------------------------------------------------------
 
+rm(list = ls())
 if(!require(pacman)) install.packages("pacman") ; require(pacman)
 library(tidyverse)
 
@@ -23,7 +24,6 @@ p_load(rio, # import/export data
 # Initial Data Manipulation -----------------------------------------------
 
 my_url="https://ignaciomsarmiento.github.io/GEIH2018_sample/"
-browseURL(my_url)
 my_html = read_html(my_url)
 
 ## I get the links of each chunk of data
@@ -73,8 +73,16 @@ if (status_code == 200) {
 # I convert the list to a data frame
 bd <- bind_rows(table_data)
 
+data_list <- list()
+for (i in 2:10){
+  print(i)
+  url <- paste0("https://ignaciomsarmiento.github.io/GEIH2018_sample/pages/geih_page_",i,".html")
+  webpage <- read_html(url)
+  table <- html_table(webpage)[[1]]
+  data_list[[i]] <- table
+}
 
-
+combined_df <- bind_rows(table_data, data_list)
 
 # Variables and Descriptive Statistics ------------------------------------
 ## Filtro sólo a los empleados mayores de 18 años
