@@ -7,6 +7,7 @@
 # Initial Setup -----------------------------------------------------------
 
 if(!require(pacman)) install.packages("pacman") ; require(pacman)
+library(tidyverse)
 
 
 p_load(rio, # import/export data
@@ -21,13 +22,15 @@ p_load(rio, # import/export data
 
 # Initial Data Manipulation -----------------------------------------------
 
-cd <- import("https://ignaciomsarmiento.github.io/GEIH2018_sample/")
+bd <- import("https://ignaciomsarmiento.github.io/GEIH2018_sample/")
 
 
 
 
 # Variables and Descriptive Statistics ------------------------------------
-
+## Filtro sólo a los empleados mayores de 18 años
+bd <- bd %>% 
+  filter(bd, age>=18, dsi==0)
 
 
 
