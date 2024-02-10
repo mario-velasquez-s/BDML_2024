@@ -18,8 +18,6 @@ p_load(rio, # import/export data
        stargazer, ## tables/output to TEX. 
        MASS)   
 
-
-
 # Initial Data Manipulation -----------------------------------------------
 
 bd <- import("https://ignaciomsarmiento.github.io/GEIH2018_sample/")
