@@ -56,4 +56,20 @@ bd <- bd %>%
 
 # The Gender Earnings GAP -------------------------------------------------
 
+#In the regression, female = 1 so I edit db so that female = 1 and male = 0
+bd$sex <- 1 - bd$sex
 
+#Otras posibles variables dependientes: y_ingLab_m  y_ingLab_m_ha
+#Estimating the unconditional wage gap
+gap_lm_monthly <- lm(log(y_salary_m)~ sex, data = bd)
+gap_lm_hourly <- lm(log(y_salary_m_hu)~ sex, data = bd)
+stargazer(gap_lm_monthly, gap_lm_hourly, type = "text")
+
+
+#Controles importantes: cuentaPropia,  dsi, formal, hoursWorkUsual, inac, maxEducLevel, oficio
+summary(bd$oficio)
+bd$maxEducLevel.f <- factor(bd$maxEducLevel)
+bd$oficio.f <- factor(bd$oficio)
+
+#Will finish later today###
+gap_lm_controsl <- lm()
