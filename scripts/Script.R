@@ -43,7 +43,10 @@ bd <- bind_rows(data_list)
 bd <- bd %>% 
   filter(bd, age>=18, dsi==0)
 
-
+#Esto me sirve, por ahora, para las regresiones del punto 4.
+bd <- bd %>%
+  filter(!is.na(y_salary_m), !is.na(age),!is.na(cuentaPropia), !is.na(formal), !is.na(hoursWorkUsual), 
+         !is.na(inac), !is.na(maxEducLevel), !is.na(oficio))
 
 
 
@@ -66,14 +69,13 @@ gap_lm_hourly <- lm(log(y_salary_m_hu)~ sex, data = bd)
 stargazer(gap_lm_monthly, gap_lm_hourly, type = "text")
 
 
-#Controles importantes: cuentaPropia,  dsi, formal, hoursWorkUsual, inac, maxEducLevel, oficio
-summary(bd$oficio)
+#Controles importantes: age, cuentaPropia, formal, hoursWorkUsual, inac, maxEducLevel, oficio
 bd$maxEducLevel.f <- factor(bd$maxEducLevel)
 bd$oficio.f <- factor(bd$oficio)
 
 #X_1 will be the variable female
 #Expected results
-results <- lm(log(y_salary_m) ~ sex + cuentaPropia + dsi + formal + hoursWorkUsual + inac + maxEducLevel.f + oficio.f, data = bd)
+results <- lm(log(y_salary_m) ~ sex + age + cuentaPropia + formal + hoursWorkUsual + inac + maxEducLevel.f + oficio.f, data = bd)
 stargazer(results, type = "text")
 
 
@@ -83,17 +85,13 @@ stargazer(results, type = "text")
 
 #Este sirve para datos no limpios
 bd <- bd %>%
-  filter(!is.na(cuentaPropia), !is.na(dsi), !is.na(formal), !is.na(hoursWorkUsual), 
-         !is.na(inac), !is.na(maxEducLevel.f), !is.na(oficio.f)) %>%
-  mutate(femaleResidControls = lm(sex ~ cuentaPropia + dsi + formal + hoursWorkUsual + 
+  mutate(femaleResidControls = lm(sex ~ age + cuentaPropia + formal + hoursWorkUsual + 
                                     inac + maxEducLevel.f + oficio.f, data = .)$residuals)
 
 
 #Este también sirve para datos no limpios
 bd <- bd %>%
-  filter(!is.na(cuentaPropia), !is.na(dsi), !is.na(formal), !is.na(hoursWorkUsual), 
-         !is.na(inac), !is.na(maxEducLevel.f), !is.na(oficio.f)) %>%
-  mutate(log_salaryResidControls = lm(log(y_salary_m) ~ cuentaPropia + dsi + formal + 
+  mutate(log_salaryResidControls = lm(log(y_salary_m) ~ age + cuentaPropia + formal + 
                                         hoursWorkUsual + inac + maxEducLevel.f + oficio.f, 
                                       data = .)$residuals)
 
@@ -113,11 +111,25 @@ eta_mod1 <- rep(0,B)
 
 for(i in 1:B){
   
-  db_sample<- sample_frac(bd,size=1,replace=TRUE) #takes a sample with replacement of the same size of the original sample (1 or 100%)
+  bd_sample<- sample_frac(bd,size=0.5,replace=TRUE) #takes a sample with replacement of the same size of the original sample (1 or 100%)
   
-  f<-lm(consumption~price+income,db_sample)# estimates the models
+  bd <- bd %>%
+    mutate(reg_1_bootstrap = lm(sex ~ cuentaPropia + dsi + formal + hoursWorkUsual + 
+                                      inac + maxEducLevel.f + oficio.f, data = bd)$residuals)
   
-  coefs<-f$coefficients[2] # gets the coefficient of interest that coincides with the elasticity of demand
+  bd <- bd %>%
+    mutate(reg_2_bootstrap = lm(log(y_salary_m) ~ cuentaPropia + dsi + formal + 
+                                          hoursWorkUsual + inac + maxEducLevel.f + oficio.f, 
+                                        data = bd)$residuals)
+  
+  reg_3_bootstrap <- lm(reg_2_bootstrap ~ reg_1_bootstrap, data = bd)
+  
+  coefs<-reg_3_bootstrap$coefficients[2] # gets the coefficient of interest that coincides with the elasticity of demand
   
   eta_mod1[i]<-coefs #saves it in the above vector
 }
+
+length(eta_mod1)
+plot(hist(eta_mod1))
+mean(eta_mod1)
+sqrt(var(eta_mod1))
