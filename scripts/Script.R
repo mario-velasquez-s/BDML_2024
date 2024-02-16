@@ -22,7 +22,7 @@ p_load(rio, # import/export data
        httr)   
 
 # Initial Data Manipulation -----------------------------------------------
-
+set.seed(999)
 
 ##Since the tables come from another HTML page, I
 ## call them from the URL of the secodnary web page
@@ -71,5 +71,53 @@ summary(bd$oficio)
 bd$maxEducLevel.f <- factor(bd$maxEducLevel)
 bd$oficio.f <- factor(bd$oficio)
 
-#Will finish later today###
-gap_lm_controsl <- lm()
+#X_1 will be the variable female
+#Expected results
+results <- lm(log(y_salary_m) ~ sex + cuentaPropia + dsi + formal + hoursWorkUsual + inac + maxEducLevel.f + oficio.f, data = bd)
+stargazer(results, type = "text")
+
+
+#Regress all the variables in X1 on X2 and take the resuduals
+#El siguiente se debería poder correr cuando se limpien los datos
+#bd <- bd %>% mutate(femaleResidControls = lm(sex ~ cuentaPropia + dsi + formal + hoursWorkUsual + inac + maxEducLevel.f + oficio.f, data = bd)$residuals)
+
+#Este sirve para datos no limpios
+bd <- bd %>%
+  filter(!is.na(cuentaPropia), !is.na(dsi), !is.na(formal), !is.na(hoursWorkUsual), 
+         !is.na(inac), !is.na(maxEducLevel.f), !is.na(oficio.f)) %>%
+  mutate(femaleResidControls = lm(sex ~ cuentaPropia + dsi + formal + hoursWorkUsual + 
+                                    inac + maxEducLevel.f + oficio.f, data = .)$residuals)
+
+
+#Este también sirve para datos no limpios
+bd <- bd %>%
+  filter(!is.na(cuentaPropia), !is.na(dsi), !is.na(formal), !is.na(hoursWorkUsual), 
+         !is.na(inac), !is.na(maxEducLevel.f), !is.na(oficio.f)) %>%
+  mutate(log_salaryResidControls = lm(log(y_salary_m) ~ cuentaPropia + dsi + formal + 
+                                        hoursWorkUsual + inac + maxEducLevel.f + oficio.f, 
+                                      data = .)$residuals)
+
+
+#Regresión de residuales
+reg_res <- lm(log_salaryResidControls ~ femaleResidControls, data = bd)
+stargazer(results, reg_res,type="text",digits=7)
+
+#Verificar que la suma de residuales de igual
+sum(resid(results)^2)
+sum(resid(reg_res)^2)
+
+### Using FWL with boothstrap (Not finished)
+
+B <- 1000
+eta_mod1 <- rep(0,B)
+
+for(i in 1:B){
+  
+  db_sample<- sample_frac(bd,size=1,replace=TRUE) #takes a sample with replacement of the same size of the original sample (1 or 100%)
+  
+  f<-lm(consumption~price+income,db_sample)# estimates the models
+  
+  coefs<-f$coefficients[2] # gets the coefficient of interest that coincides with the elasticity of demand
+  
+  eta_mod1[i]<-coefs #saves it in the above vector
+}
