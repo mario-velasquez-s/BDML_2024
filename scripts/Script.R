@@ -114,7 +114,6 @@ bd <- bd %>%
   filter(!is.na(y_salary_m_hu), !is.na(age),!is.na(cuentaPropia), !is.na(formal), !is.na(hoursWorkUsual), 
          !is.na(inac), !is.na(maxEducLevel), !is.na(oficio))
 
-  
 
 # 3: Age-wage Profile --------------------------------------------------------
 
@@ -149,43 +148,44 @@ abline(v = peak_age_conf_intervals$bca[5], col = "red", lty = 2)
 # 4: The Gender Earnings GAP -------------------------------------------------
 
 #In the regression, female = 1 so I edit bd so that female = 1 and male = 0
+
 bd$sex <- 1 - bd$sex
 
-#Otras posibles variables dependientes: y_ingLab_m  y_ingLab_m_ha
-#Estimating the unconditional wage gap
-gap_lm_monthly <- lm(log(y_salary_m)~ sex, data = bd)
+# a) Estimating the unconditional wage gap
+
 gap_lm_hourly <- lm(log(y_salary_m_hu)~ sex, data = bd)
-stargazer(gap_lm_monthly, gap_lm_hourly, type = "text")
+stargazer(gap_lm_hourly, type = "text")
+
+# b) Part i. Conditional age gap incorporating controls like age, cuentaPropia, formal, hoursWorkUsual, inac, maxEducLevel, oficio
 
 
-#Controles importantes: age, cuentaPropia, formal, hoursWorkUsual, inac, maxEducLevel, oficio
-bd$maxEducLevel.f <- factor(bd$maxEducLevel)
-bd$oficio.f <- factor(bd$oficio)
+bd$maxEducLevel.f <- factor(bd$maxEducLevel) #Converts variable to factor
+bd$oficio.f <- factor(bd$oficio) #Converts variable to factor
 
-#X_1 will be the variable female
-#Expected results
-results <- lm(log(y_salary_m) ~ sex + age + cuentaPropia + formal + hoursWorkUsual + inac + maxEducLevel.f + oficio.f, data = bd)
+# When applying FWL, the first vector of explanatory variables (#X_1) will only contain the variable female
+
+
+# First, perform the regression without the FWL method to know which results should we expect from the FWL process since outcomes are the same
+results <- lm(log(y_salary_m_hu) ~ sex + poly(age,2, raw = TRUE) + cuentaPropia + formal + hoursWorkUsual + inac + maxEducLevel.f + oficio.f, data = bd)
 stargazer(results, type = "text")
 
 
-#Regress all the variables in X1 on X2 and take the residuals
-#El siguiente se debería poder correr cuando se limpien los datos
-#bd <- bd %>% mutate(femaleResidControls = lm(sex ~ cuentaPropia + dsi + formal + hoursWorkUsual + inac + maxEducLevel.f + oficio.f, data = bd)$residuals)
+#Step 1 from the FWL process. Regress all the X_2 variables against X_1 (sex)
 
-#Este sirve para datos no limpios
 bd <- bd %>%
-  mutate(femaleResidControls = lm(sex ~ age + cuentaPropia + formal + hoursWorkUsual + 
+  mutate(femaleResidControls = lm(sex ~ poly(age,2, raw = TRUE) + cuentaPropia + formal + hoursWorkUsual + 
                                     inac + maxEducLevel.f + oficio.f, data = .)$residuals)
 
 
-#Este también sirve para datos no limpios
+#Setp 2 from the FWL process. Regress the outcome variable against the X_2 variables.
+
 bd <- bd %>%
-  mutate(log_salaryResidControls = lm(log(y_salary_m) ~ age + cuentaPropia + formal + 
+  mutate(log_salaryResidControls = lm(log(y_salary_m_hu) ~ poly(age,2, raw = TRUE) + cuentaPropia + formal + 
                                         hoursWorkUsual + inac + maxEducLevel.f + oficio.f, 
                                       data = .)$residuals)
 
+#Step 3 from the FWL process. Regress the residuals from step 2 as the result variable against the residuals from step 1.
 
-#Regresión de residuales
 reg_res <- lm(log_salaryResidControls ~ femaleResidControls, data = bd)
 stargazer(results, reg_res,type="text",digits=7)
 
@@ -193,25 +193,26 @@ stargazer(results, reg_res,type="text",digits=7)
 sum(resid(results)^2)
 sum(resid(reg_res)^2)
 
-### Using FWL with boothstrap (Not finished)
+# b) Part ii. Using FWL with bootstrap
 
 B <- 1000
 eta_mod1 <- rep(0,B)
+bd_copy <- bd
 
 for(i in 1:B){
   
-  bd_sample<- sample_frac(bd,size=0.5,replace=TRUE) #takes a sample with replacement of the same size of the original sample (1 or 100%)
+  bd_sample<- sample_frac(bd_copy,size=1,replace=TRUE) #takes a sample with replacement of the same size of the original sample (1 or 100%)
   
   bd <- bd %>%
-    mutate(reg_1_bootstrap = lm(sex ~ cuentaPropia + dsi + formal + hoursWorkUsual + 
-                                      inac + maxEducLevel.f + oficio.f, data = bd)$residuals)
+    mutate(reg_1_bootstrap = lm(sex ~ poly(age,2, raw = TRUE) + cuentaPropia + formal + hoursWorkUsual + 
+                                  inac + maxEducLevel.f + oficio.f, data = .)$residuals)
   
   bd <- bd %>%
-    mutate(reg_2_bootstrap = lm(log(y_salary_m) ~ cuentaPropia + dsi + formal + 
-                                          hoursWorkUsual + inac + maxEducLevel.f + oficio.f, 
-                                        data = bd)$residuals)
+    mutate(reg_2_bootstrap = lm(log(y_salary_m_hu) ~ poly(age,2, raw = TRUE) + cuentaPropia + formal + 
+                                  hoursWorkUsual + inac + maxEducLevel.f + oficio.f, 
+                                data = .)$residuals)
   
-  reg_3_bootstrap <- lm(reg_2_bootstrap ~ reg_1_bootstrap, data = bd)
+  reg_3_bootstrap <- lm(reg_2_bootstrap ~ reg_1_bootstrap, data = bd_sample)
   
   coefs<-reg_3_bootstrap$coefficients[2] # gets the coefficient of interest that coincides with the elasticity of demand
   
@@ -224,7 +225,7 @@ mean(eta_mod1)
 sqrt(var(eta_mod1))
 
 
-
+# c) Ploting the age-wage profile 
 
 
 
