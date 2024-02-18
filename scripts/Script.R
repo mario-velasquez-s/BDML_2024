@@ -78,10 +78,30 @@ vis_miss(bd)
 
 solo_desocu <- bd %>% filter(ocu==0)
 vis_miss(solo_desocu) ## Si no están ocupados no tienen ingresos, ni formal/informal
+
 ## Entonces podemos igualar esos ingresos a 0:
 ## y_ingLab_m_ha, oficio, formal, informal, y_ingLab_m = 0
+bd <- bd %>% mutate(y_salary_m_hu = ifelse(ocu==0, 0, y_salary_m_hu))
+bd <- bd %>% mutate(y_ingLab_m_ha = ifelse(ocu==0, 0, y_ingLab_m_ha))
+vis_miss(bd) ## Now missings are reduced to 29%
 
+## 29% It's still a high proportion.
+## I will impute the rest using the hourly wage by estrato1
 
+# Distribution of hourly wage
+ggplot(bd, aes(y_salary_m_hu)) +
+  geom_histogram(color = "#000000", fill = "#0099F8") +
+  geom_vline(xintercept = median(bd$y_salary_m_hu, na.rm = TRUE), linetype = "dashed", color = "red") +
+  geom_vline(xintercept = mean(bd$y_salary_m_hu, na.rm = TRUE), linetype = "dashed", color = "blue") +  
+  ggtitle("Salario horario") +
+  theme_classic() +
+  theme(plot.title = element_text(size = 18))
+
+## Since the graph shows me a long right tail, I will impute with the 
+## median to avoid an overestimation of hourly wage imputations.
+bd <- bd %>% mutate(y_salary_m_hu = ifelse(is.na(y_salary_m_hu)== TRUE, median(bd$y_salary_m_hu, na.rm = TRUE), 
+                                           y_salary_m_hu))
+vis_miss(bd) ## No missings
 
 
 #Esto me sirve, por ahora, para las regresiones del punto 4.
