@@ -58,9 +58,10 @@ ggplot(bd, aes(x = ocu, y = dsi)) +
   ## dsi: it's one of my sample criteria
   ## ocu, estrato1, oficio, formal, informal, ingtot, ingtotes, y_ingLab_m, maxEducLevel: other variables
     ## I consider useful for the prediction in point 4
-bd <- bd %>% dplyr::select(y_ingLab_m_ha, age, sex, dsi, ocu, 
-                           estrato1, oficio, formal, informal, 
-                           ingtot, ingtotes, y_ingLab_m, maxEducLevel)
+bd <- bd %>% dplyr::select(y_salary_m_hu,y_ingLab_m_ha, age, 
+                           sex, dsi, ocu, estrato1, oficio, 
+                           formal, informal, ingtot, ingtotes, 
+                           y_ingLab_m, maxEducLevel)
 
 ## Here I detect the missing values of the data
 bd_miss <- skim(bd) %>%
@@ -79,6 +80,8 @@ solo_desocu <- bd %>% filter(ocu==0)
 vis_miss(solo_desocu) ## Si no están ocupados no tienen ingresos, ni formal/informal
 ## Entonces podemos igualar esos ingresos a 0:
 ## y_ingLab_m_ha, oficio, formal, informal, y_ingLab_m = 0
+
+
 
 
 #Esto me sirve, por ahora, para las regresiones del punto 4.
