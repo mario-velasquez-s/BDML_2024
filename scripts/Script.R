@@ -8,7 +8,6 @@
 
 rm(list = ls())
 if(!require(pacman)) install.packages("pacman") ; require(pacman)
-library(tidyverse)
 
 
 p_load(rio, # import/export data
@@ -19,7 +18,10 @@ p_load(rio, # import/export data
        stargazer, ## tables/output to TEX. 
        MASS,
        rvest,
-       httr)   
+       httr,
+       dplyr,
+       ggplot2,
+       visdat)   
 
 # Initial Data Manipulation -----------------------------------------------
 
@@ -36,12 +38,48 @@ for (i in 1:10){
   data_list[[i]] <- table
 }
 
-bd <- bind_rows(data_list)
+geih <- bind_rows(data_list)
 
 # Variables and Descriptive Statistics ------------------------------------
+bd <- as_tibble(geih)
 ## Filtro sólo a los empleados mayores de 18 años
 bd <- bd %>% 
-  filter(bd, age>=18, dsi==0)
+ dplyr::filter(age >= 18 & dsi == 0) ##Here I reduce my sample from 32177 to 22640
+
+ggplot(bd, aes(x = ocu, y = dsi)) +
+  geom_point()
+
+
+
+## I keep only the variables of my interest:
+  ## y_ingLab_m_ha: the variable I want to predict
+  ## age: my predictor for the point 2 and one of my sample criteria
+  ## sex: my predictor for the point 3
+  ## dsi: it's one of my sample criteria
+  ## ocu, estrato1, oficio, formal, informal, ingtot, ingtotes, y_ingLab_m, maxEducLevel: other variables
+    ## I consider useful for the prediction in point 4
+bd <- bd %>% dplyr::select(y_ingLab_m_ha, age, sex, dsi, ocu, 
+                           estrato1, oficio, formal, informal, 
+                           ingtot, ingtotes, y_ingLab_m, maxEducLevel)
+
+## Here I detect the missing values of the data
+bd_miss <- skim(bd) %>%
+  dplyr::select(skim_variable, n_missing)
+
+nobs=nrow(bd)
+
+bd_miss <- bd_miss %>%   mutate(p_missing= n_missing/nobs)
+
+bd_miss <- bd_miss %>%   arrange(-n_missing)
+bd_miss ## I see 56% of my dependent variable is missing, the same for the monthly
+
+vis_miss(bd)
+
+solo_desocu <- bd %>% filter(ocu==0)
+vis_miss(solo_desocu) ## Si no están ocupados no tienen ingresos, ni formal/informal
+## Entonces podemos igualar esos ingresos a 0:
+## y_ingLab_m_ha, oficio, formal, informal, y_ingLab_m = 0
+
 
 
 
