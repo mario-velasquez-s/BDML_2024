@@ -45,21 +45,16 @@ geih <- bind_rows(data_list)
 bd <- as_tibble(geih)
 ## Filtro sólo a los empleados mayores de 18 años
 bd <- bd %>% 
- dplyr::filter(age >= 18 & dsi == 0) ##Here I reduce my sample from 32177 to 22640
-
-ggplot(bd, aes(x = ocu, y = dsi)) +
-  geom_point()
-
-
+ dplyr::filter(age >= 18 & ocu == 1) ##Here I reduce my sample from 32177 to 22640
 
 ## I keep only the variables of my interest:
-  ## y_ingLab_m_ha: the variable I want to predict
+  ## y_salary_m_hu/y_ingLab_m_ha: the variable I want to predict
   ## age: my predictor for the point 2 and one of my sample criteria
   ## sex: my predictor for the point 3
   ## dsi: it's one of my sample criteria
   ## ocu, estrato1, oficio, formal, informal, ingtot, ingtotes, y_ingLab_m, maxEducLevel: other variables
     ## I consider useful for the prediction in point 4
-bd <- bd %>% dplyr::select(y_ingLab_m_ha,y_salary_m_hu, age, 
+bd <- bd %>% dplyr::select(y_salary_m_hu, age, 
                            sex, dsi, ocu, estrato1, oficio, 
                            formal, informal, ingtot, ingtotes, 
                            y_ingLab_m, maxEducLevel, cuentaPropia, 
