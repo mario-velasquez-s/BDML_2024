@@ -21,13 +21,14 @@ p_load(rio, # import/export data
        httr,
        dplyr,
        ggplot2,
-       visdat)   
+       visdat,
+       caret)   # For predictive model assessment
 
-# Initial Data Manipulation -----------------------------------------------
+# 1: Initial Data Manipulation -----------------------------------------------
 set.seed(999)
 
 ##Since the tables come from another HTML page, I
-## call them from the URL of the secodnary web page
+## call them from the URL of the secondary web page
 
 data_list <- list()
 for (i in 1:10){
@@ -40,7 +41,7 @@ for (i in 1:10){
 
 geih <- bind_rows(data_list)
 
-# Variables and Descriptive Statistics ------------------------------------
+# 2: Variables and Descriptive Statistics ------------------------------------
 bd <- as_tibble(geih)
 ## Filtro sólo a los empleados mayores de 18 años
 bd <- bd %>% 
@@ -56,7 +57,9 @@ bd <- bd %>%
 bd <- bd %>% dplyr::select(y_salary_m_hu, age, 
                            sex, dsi, ocu, estrato1, oficio, 
                            formal, informal, ingtot, ingtotes, 
-                           y_ingLab_m, maxEducLevel)
+                           y_ingLab_m, maxEducLevel, cuentaPropia, 
+                           hoursWorkUsual, inac, y_ingLab_m)
+
 
 ## Here I detect the missing values of the data
 bd_miss <- skim(bd) %>%
@@ -100,22 +103,47 @@ vis_miss(bd) ## No missings
 
 
 #Esto me sirve, por ahora, para las regresiones del punto 4.
+  # Aca cambié y_salary_m a y_salary_m_hu porque se dropeo antes y no corria
+
 bd <- bd %>%
-  filter(!is.na(y_salary_m), !is.na(age),!is.na(cuentaPropia), !is.na(formal), !is.na(hoursWorkUsual), 
+  filter(!is.na(y_salary_m_hu), !is.na(age),!is.na(cuentaPropia), !is.na(formal), !is.na(hoursWorkUsual), 
          !is.na(inac), !is.na(maxEducLevel), !is.na(oficio))
 
+  
+
+# 3: Age-wage Profile --------------------------------------------------------
+
+# Creo que no es y_ingLab_m sino y_salary_m_hu (o y_ingLab_m_ha), deberiamos ponernos de acuerdo
+modelo_punto_3 <- lm(log(y_ingLab_m) ~ age + I(age^2), data = bd)
+
+stargazer(modelo_punto_3, title="Regresión de salario contra edad", type="latex", out="regresion_punto_3.tex")
+stargazer(modelo_punto_3, title="Regresión de salario contra edad - texto", type="text")
+
+# Funcion del "peak-age"
+bootstrap_peak_age <- function(bd, indices) {
+  sampled_data <- bd[indices, ]
+  modelo_boot <- lm(log(y_ingLab_m) ~ age + I(age^2), data = sampled_data)
+  
+  # Calculate peak age using the formula: -b1 / (2 * b2)
+  peak_age <- -coef(modelo_boot)[2] / (2 * coef(modelo_boot)[3])
+  return(peak_age)
+}
+
+bootstrap_peak_age_results <- boot(bd, bootstrap_peak_age, R = 1000)
 
 
-# Age-wage Profile --------------------------------------------------------
+peak_age_conf_intervals <- boot.ci(bootstrap_peak_age_results, type = "bca")
+
+hist(bootstrap_peak_age_results$t, main = "Distribucion de 'Peak Age'", xlab = "Peak Age", ylab = "Frecuencia", col = "lightblue", border = "black")
+
+abline(v = peak_age_conf_intervals$bca[4], col = "red", lty = 2)
+abline(v = peak_age_conf_intervals$bca[5], col = "red", lty = 2)
 
 
 
+# 4: The Gender Earnings GAP -------------------------------------------------
 
-
-
-# The Gender Earnings GAP -------------------------------------------------
-
-#In the regression, female = 1 so I edit db so that female = 1 and male = 0
+#In the regression, female = 1 so I edit bd so that female = 1 and male = 0
 bd$sex <- 1 - bd$sex
 
 #Otras posibles variables dependientes: y_ingLab_m  y_ingLab_m_ha
@@ -135,7 +163,7 @@ results <- lm(log(y_salary_m) ~ sex + age + cuentaPropia + formal + hoursWorkUsu
 stargazer(results, type = "text")
 
 
-#Regress all the variables in X1 on X2 and take the resuduals
+#Regress all the variables in X1 on X2 and take the residuals
 #El siguiente se debería poder correr cuando se limpien los datos
 #bd <- bd %>% mutate(femaleResidControls = lm(sex ~ cuentaPropia + dsi + formal + hoursWorkUsual + inac + maxEducLevel.f + oficio.f, data = bd)$residuals)
 
@@ -189,3 +217,95 @@ length(eta_mod1)
 plot(hist(eta_mod1))
 mean(eta_mod1)
 sqrt(var(eta_mod1))
+
+
+
+
+
+
+# 5: Predicting earnings------------------------------------
+
+  # a. Splitting sample 70% training 30% testing 
+
+  set.seed(10101)  # Set set for replicability purposes 
+
+
+inTrain <- createDataPartition(
+  y = bd$y_salary_m_hu,  ## the outcome data are needed
+  p = .70, ## The percentage of data in the
+  list = FALSE
+)
+
+training <- bd[ inTrain,]
+testing  <- bd[-inTrain,]
+
+# Model 1 - modelo punto 3
+# Training
+form_1<- log(y_salary_m_hu) ~ age + I(age^2) 
+
+
+modelo_cv1 <- lm(form_1,
+               data = training)
+# Prediction
+predictions <- predict(modelo_cv1, testing)
+
+
+score_cv1<- RMSE(predictions, testing$y_salary_m_hu )
+score_cv1 # 10584.75
+
+
+# Model 2 - unconditional wage gap
+# Training
+form_2<- log(y_salary_m_hu)~ sex
+
+modelo_cv2 <- lm(form_2,
+               data = training)
+# Prediction
+predictions <- predict(modelo_cv2, testing)
+
+
+score_cv2<- RMSE(predictions, testing$y_salary_m_hu )
+score_cv2 # 10584.76
+
+  # b. Comparing models based on RMSE
+
+# para por ahora
+scores_cv<- data.frame( Model= c(1, 2),
+                     RMSE_vsa= c(score_cv1, score_cv2)
+)
+
+
+scores_cv<- data.frame( Model= c(1, 2, 3, 4, 5, 6, 7),
+                     RMSE_vsa= c(score_cv1, score_cv2, score_cv3, score_cv4, 
+                                 score_cv5, score_cv6, score_cv7))
+
+head(scores_cv)
+
+  # c. Comments on results 
+
+  # d. LOOCV for the two models with the lowest RMSE
+
+ctrl <- trainControl(
+  method = "LOOCV") 
+
+modelo_loocv1 <- train(FALTA DEFINIR,
+                  data = db,
+                  method = 'lm', 
+                  trControl= ctrl)
+
+score_loocv1<-RMSE(modelo1c$pred$pred, db$totalHoursWorked)
+
+
+
+modelo_loocv2 <- train(FALTA DEFINIR,
+                       data = db,
+                       method = 'lm', 
+                       trControl= ctrl)
+
+score_loocv2<-RMSE(modelo1c$pred$pred, db$totalHoursWorked)
+
+
+
+
+
+
