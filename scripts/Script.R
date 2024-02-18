@@ -220,9 +220,31 @@ mean(eta_mod1)
 sqrt(var(eta_mod1))
 
 
-# c) Ploting the age-wage profile 
+# c) Ploting the age-wage profile (unfinished)
 
+model_male <- lm(log(y_salary_m_hu) ~ poly(age,2, raw = TRUE) + cuentaPropia + formal + hoursWorkUsual + inac, data = bd[bd$sex == 0,])
+model_female <- lm(log(y_salary_m_hu) ~ poly(age,2, raw = TRUE) + cuentaPropia + formal + hoursWorkUsual + inac, data = bd[bd$sex == 1,])
 
+# Define a range of ages for prediction
+
+age_range <- seq(min(bd$age), max(bd$age), by = 1)
+
+# Predict wages for males
+control_vars <- c("cuentaPropia", "formal", "hoursWorkUsual", "inac")
+
+pred_male <- predict(model_male, newdata = data.frame(age = age_range, 
+                                                      cuentaPropia = mean(bd$control_vars[bd$sex == 0]), 
+                                                      formal = mean(bd$formal[bd$sex == 0]), 
+                                                      hoursWorkUsual = mean(bd$hoursWorkUsual[bd$sex == 0]), 
+                                                      inac = mean(bd$inac[bd$sex == 0]), 
+                     interval = "confidence", level = 0.95))
+
+pred_female <- predict(model_female, newdata = data.frame(age = age_range, 
+                                                      cuentaPropia = mean(bd$control_vars[bd$sex == 1]), 
+                                                      formal = mean(bd$formal[bd$sex == 1]), 
+                                                      hoursWorkUsual = mean(bd$hoursWorkUsual[bd$sex == 1]), 
+                                                      inac = mean(bd$inac[bd$sex == 1]), 
+                                                      interval = "confidence", level = 0.95))
 
 # 5: Predicting earnings------------------------------------
 
