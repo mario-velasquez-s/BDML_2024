@@ -27,7 +27,7 @@ p_load(rio, # import/export data
 set.seed(999)
 
 ##Since the tables come from another HTML page, I
-## call them from the URL of the secodnary web page
+## call them from the URL of the secondary web page
 
 data_list <- list()
 for (i in 1:10){
@@ -114,7 +114,30 @@ bd <- bd %>%
 # Age-wage Profile --------------------------------------------------------
 
 
+modelo_punto_3 <- lm(log(y_ingLab_m) ~ age + I(age^2), data = bd)
 
+stargazer(modelo_punto_3, title="Regresión de salario contra edad", type="latex", out="regresion_punto_3.tex")
+stargazer(modelo_punto_3, title="Regresión de salario contra edad - texto", type="text")
+
+# Funcion del "peak-age"
+bootstrap_peak_age <- function(bd, indices) {
+  sampled_data <- bd[indices, ]
+  modelo_boot <- lm(log(y_ingLab_m) ~ age + I(age^2), data = sampled_data)
+  
+  # Calculate peak age using the formula: -b1 / (2 * b2)
+  peak_age <- -coef(modelo_boot)[2] / (2 * coef(modelo_boot)[3])
+  return(peak_age)
+}
+
+bootstrap_peak_age_results <- boot(bd, bootstrap_peak_age, R = 1000)
+
+
+peak_age_conf_intervals <- boot.ci(bootstrap_peak_age_results, type = "bca")
+
+hist(bootstrap_peak_age_results$t, main = "Distribucion de 'Peak Age'", xlab = "Peak Age", ylab = "Frecuencia", col = "lightblue", border = "black")
+
+abline(v = peak_age_conf_intervals$bca[4], col = "red", lty = 2)
+abline(v = peak_age_conf_intervals$bca[5], col = "red", lty = 2)
 
 
 
