@@ -49,14 +49,14 @@ bd <- bd %>%
 
 ## I keep only the variables of my interest:
   ## y_salary_m_hu: the variable I want to predict
-  ## age: my predictor for the point 2 and one of my sample criteria
-  ## sex: my predictor for the point 3
+  ## age: my predictor for exercise 2 and one of my sample criteria
+  ## sex: my predictor for exercise 3
   ## ocu: it's one of my sample criteria
   ## estrato1, oficio, formal, informal, maxEducLevel, cuentaPropia, 
   ## hoursWorkUsual, inac: other variables
     ## I consider useful for the prediction in point 4
 bd <- bd %>% dplyr::select(y_salary_m_hu, age, 
-                           sex, dsi, ocu, estrato1, oficio, 
+                           sex, ocu, estrato1, oficio, 
                            formal, informal, 
                            maxEducLevel, cuentaPropia, 
                            hoursWorkUsual, inac)
@@ -83,8 +83,7 @@ bd <- bd %>% filter(!is.na(maxEducLevel))
 ggplot(bd, aes(y_salary_m_hu)) +
   geom_histogram(color = "#000000", fill = "#0099F8") +
   geom_vline(xintercept = median(bd$y_salary_m_hu, na.rm = TRUE), linetype = "dashed", color = "red") +
-  geom_vline(xintercept = mean(bd$y_salary_m_hu, na.rm = TRUE), linetype = "dashed", color = "blue") +  
-  ggtitle("Salario horario") +
+  geom_vline(xintercept = mean(bd$y_salary_m_hu, na.rm = TRUE), linetype = "dashed", color = "blue") +
   theme_classic() +
   theme(plot.title = element_text(size = 18))
 
@@ -92,8 +91,7 @@ ggplot(bd, aes(y_salary_m_hu)) +
 ggplot(bd) +
   geom_histogram(mapping=aes(x=y_salary_m_hu, group=as.factor(sex),fill=as.factor(sex))) +
   geom_vline(xintercept = mean((bd%>%filter(sex==0))$y_salary_m_hu, na.rm = TRUE), linetype = "dashed", color = "#B55049") +
-  geom_vline(xintercept = mean((bd%>%filter(sex==1))$y_salary_m_hu, na.rm = TRUE), linetype = "dashed", color = "#358291") +  
-  ggtitle("Salario horario por sexo") +
+  geom_vline(xintercept = mean((bd%>%filter(sex==1))$y_salary_m_hu, na.rm = TRUE), linetype = "dashed", color = "#358291") +
   theme_classic() +
   theme(plot.title = element_text(size = 18)) +
   scale_fill_manual(values = c("0"="#F36A60" , "1"="#46B4CA"), labels = c("0"="Mujer", "1"="Hombre"), name="Sexo")
@@ -103,6 +101,8 @@ ggplot(bd) +
 ## the mean by women and men are not so different, 
 ## we will impute with the median of hourly wage conditioned to the age
 ## in order to avoid affecting the prediction model.
+
+#ggplot(data=bd, mapping = aes(as.factor(age), y_salary_m_hu)) +  geom_boxplot() 
 
 bd <- bd %>% 
   group_by(age) %>%
