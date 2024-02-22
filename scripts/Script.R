@@ -45,20 +45,21 @@ geih <- bind_rows(data_list)
 bd <- as_tibble(geih)
 ## Filtro sólo a los empleados mayores de 18 años
 bd <- bd %>% 
- dplyr::filter(age >= 18 & ocu == 1) ##Here I reduce my sample from 32177 to 22640
+ dplyr::filter(age >= 18 & ocu == 1) ##Here I reduce my sample from 32177 to 16542 obs
 
 ## I keep only the variables of my interest:
-  ## y_salary_m_hu/y_ingLab_m_ha: the variable I want to predict
+  ## y_salary_m_hu: the variable I want to predict
   ## age: my predictor for the point 2 and one of my sample criteria
   ## sex: my predictor for the point 3
-  ## dsi: it's one of my sample criteria
-  ## ocu, estrato1, oficio, formal, informal, ingtot, ingtotes, y_ingLab_m, maxEducLevel: other variables
+  ## ocu: it's one of my sample criteria
+  ## estrato1, oficio, formal, informal, maxEducLevel, cuentaPropia, 
+  ## hoursWorkUsual, inac: other variables
     ## I consider useful for the prediction in point 4
 bd <- bd %>% dplyr::select(y_salary_m_hu, age, 
                            sex, dsi, ocu, estrato1, oficio, 
-                           formal, informal, ingtot, ingtotes, 
-                           y_ingLab_m, maxEducLevel, cuentaPropia, 
-                           hoursWorkUsual, inac, y_ingLab_m)
+                           formal, informal, 
+                           maxEducLevel, cuentaPropia, 
+                           hoursWorkUsual, inac)
 
 
 ## Here I detect the missing values of the data
@@ -70,21 +71,13 @@ nobs=nrow(bd)
 bd_miss <- bd_miss %>%   mutate(p_missing= n_missing/nobs)
 
 bd_miss <- bd_miss %>%   arrange(-n_missing)
-bd_miss ## I see 56% of my dependent variable is missing, the same for the monthly
-
+bd_miss ## I see 40% of my dependent variable is missing, and there is one missing for the maxEducLevel
 vis_miss(bd)
 
-solo_desocu <- bd %>% filter(ocu==0)
-vis_miss(solo_desocu) ## Si no están ocupados no tienen ingresos, ni formal/informal
+## First, we will drop the only observation with missing maxEducLevel
+bd <- bd %>% filter(!is.na(maxEducLevel))
 
-## Entonces podemos igualar esos ingresos a 0:
-## y_ingLab_m_ha, oficio, formal, informal, y_ingLab_m = 0
-bd <- bd %>% mutate(y_salary_m_hu = ifelse(ocu==0, 0, y_salary_m_hu))
-bd <- bd %>% mutate(y_ingLab_m_ha = ifelse(ocu==0, 0, y_ingLab_m_ha))
-vis_miss(bd) ## Now missings are reduced to 29%
-
-## 29% It's still a high proportion.
-## I will impute the rest using the hourly wage by estrato1
+## Now, we will impute the rest using the hourly wage 
 
 # Distribution of hourly wage
 ggplot(bd, aes(y_salary_m_hu)) +
@@ -95,19 +88,57 @@ ggplot(bd, aes(y_salary_m_hu)) +
   theme_classic() +
   theme(plot.title = element_text(size = 18))
 
-## Since the graph shows me a long right tail, I will impute with the 
-## median to avoid an overestimation of hourly wage imputations.
-bd <- bd %>% mutate(y_salary_m_hu = ifelse(is.na(y_salary_m_hu)== TRUE, median(bd$y_salary_m_hu, na.rm = TRUE), 
-                                           y_salary_m_hu))
-vis_miss(bd) ## No missings
+#Distribution of hourly wage with the mean by sex
+ggplot(bd) +
+  geom_histogram(mapping=aes(x=y_salary_m_hu, group=as.factor(sex),fill=as.factor(sex))) +
+  geom_vline(xintercept = mean((bd%>%filter(sex==0))$y_salary_m_hu, na.rm = TRUE), linetype = "dashed", color = "#B55049") +
+  geom_vline(xintercept = mean((bd%>%filter(sex==1))$y_salary_m_hu, na.rm = TRUE), linetype = "dashed", color = "#358291") +  
+  ggtitle("Salario horario por sexo") +
+  theme_classic() +
+  theme(plot.title = element_text(size = 18)) +
+  scale_fill_manual(values = c("0"="#F36A60" , "1"="#46B4CA"), labels = c("0"="Mujer", "1"="Hombre"), name="Sexo")
+
+## Since the graph shows me a long right tail and, 
+## the two variables we will use to predict are sex and age, and
+## the mean by women and men are not so different, 
+## we will impute with the median of hourly wage conditioned to the age
+## in order to avoid affecting the prediction model.
+
+bd <- bd %>% 
+  group_by(age) %>%
+  mutate(y_salary_m_hu = if_else(is.na(y_salary_m_hu),median(y_salary_m_hu, na.rm=TRUE),y_salary_m_hu)) %>%
+  ungroup()
+
+## We check again the missing values
+bd_miss <- skim(bd) %>%   dplyr::select(skim_variable, n_missing)
+nobs=nrow(bd)
+bd_miss <- bd_miss %>%   mutate(p_missing= n_missing/nobs)
+bd_miss <- bd_miss %>%   arrange(-n_missing)
+bd_miss ## There are still 37 missings.
+
+## These are because there was any reported hourly wage for these observations, so
+## There wasn't median. We explore the age of the missing observations and we noticed
+## They are all above 74. This probably is because these people are already retired
+## and they could fear to lose their retirement payment if they report additional incomes
+## or because they are old they could have forgotten the value. In any case, because
+## we are not sure, we prefer to erase such observations. After all, they only represent the
+## 0,2 % of observations.
+
+## PREGUNTAR EN EQUIPO SI VALE LA PENA ABORDAR CENSURA ACÁ
+
+reason_missings <- bd %>% 
+  filter(is.na(y_salary_m_hu)) %>%
+  arrange(-age) %>%
+  dplyr::select(`age`)
+summary(reason_missings)
+view(reason_missings)
+
+bd <- bd %>% filter(!is.na(y_salary_m_hu)) 
 
 
-#Esto me sirve, por ahora, para las regresiones del punto 4.
-  # Aca cambié y_salary_m a y_salary_m_hu porque se dropeo antes y no corria
+vis_miss(bd) ## No missings and 16504 obs.
 
-bd <- bd %>%
-  filter(!is.na(y_salary_m_hu), !is.na(age),!is.na(cuentaPropia), !is.na(formal), !is.na(hoursWorkUsual), 
-         !is.na(inac), !is.na(maxEducLevel), !is.na(oficio))
+
 
 
 # 3: Age-wage Profile --------------------------------------------------------
