@@ -41,7 +41,7 @@ for (i in 1:10){
 
 geih <- bind_rows(data_list)
 
-# 2: Variables and Descriptive Statistics ------------------------------------
+# 2: Data Cleaning -----------------------------------------------------------
 bd <- as_tibble(geih)
 ## Filtro sólo a los empleados mayores de 18 años
 bd <- bd %>% 
@@ -56,8 +56,8 @@ bd <- bd %>%
   ## hoursWorkUsual, inac: other variables
     ## I consider useful for the prediction in point 4
 bd <- bd %>% dplyr::select(y_salary_m_hu, age, 
-                           sex, ocu, estrato1, oficio, 
-                           formal, informal, 
+                           sex, estrato1, oficio, 
+                           formal, 
                            maxEducLevel, cuentaPropia, 
                            hoursWorkUsual, inac)
 
@@ -137,6 +137,49 @@ bd <- bd %>% filter(!is.na(y_salary_m_hu))
 
 
 vis_miss(bd) ## No missings and 16504 obs.
+
+# 2a: Variables and Descriptive Statistics ------------------------------------
+names(bd)
+
+##Summary of all variables
+des_vars <- c("age", "sex", "hoursWorkUsual", "formal", "cuentaPropia")
+stargazer::stargazer(as.data.frame(bd[,des_vars]), type="latex", title="Descriptivas de las variables explicatorias",
+                     out="C:/Users/Maria.Arias/OneDrive - Universidad de los andes/MSc Economics/Big Data & Machine Learning/Problem set 1/BDML_2024/views/descriptivas_numericas.tex")
+
+## Graph to describe "maxEducLevel", "estrato1"
+bd$maxEducLevel <- factor(bd$maxEducLevel, levels = c(1,2,3,4,5,6,7,9), 
+                          labels = c("Ninguno", "Pre-escolar", "Primaria incompleta", "Primaria completa",
+                                     "Secundaria incompleta", "Secundaria completa","Terciaria","N/A"))
+
+ggplot(bd, aes(x=maxEducLevel)) + 
+  geom_bar(fill="#0099F8") +
+  labs(x="Máximo nivel de educación alcanzado",
+         y= "Cantidad") + 
+  theme_bw() ## Esta distribución parecería atípica, pero como nuestra muestra sólo contiene 
+            ## personas ocupadas, puede que tenga sentido. Completar con estadísticas laborales en documento.
+
+ggplot(bd, aes(x=as.factor(estrato1))) + 
+  geom_bar(fill="#0099F8") +
+  labs(x="Estrato de energía",
+       y= "Cantidad") + 
+  theme_bw()
+
+
+## Graph of why to transform wage to ln(wage)
+bd$ln_wage <- log(bd$y_salary_m_hu)
+ggplot(bd, aes(x=ln_wage)) +
+  geom_histogram(fill="#0099F8") +
+  labs(x="ln(salario horario)", y="Frecuencia") +
+  theme_bw()
+
+## Graph of age vs wage
+bd$sex <- factor(bd$sex, levels=c(0,1), labels = c("Mujer", "Hombre"))
+ggplot(bd) + 
+  geom_point(mapping = aes(x=age, y=ln_wage, color=as.factor(sex))) + 
+  geom_smooth(mapping = aes(x=age, y=ln_wage)) +
+  labs(x="Edad", y="ln(salario horario)") + 
+  theme_bw()
+
 
 
 
