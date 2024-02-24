@@ -216,7 +216,7 @@ abline(v = peak_age_conf_intervals$bca[5], col = "red", lty = 2)
 
 # 4: The Gender Earnings GAP -------------------------------------------------
 
-#In the regression, female = 1 so I edit bd so that female = 1 and male = 0
+#In the regression, women = 1 so I edit bd so that women = 1 and man = 0
 
 bd$sex <- 1 - bd$sex
 
@@ -227,30 +227,38 @@ stargazer(gap_lm_hourly, type = "text")
 
 # b) Part i. Conditional age gap incorporating controls like age, cuentaPropia, formal, hoursWorkUsual, inac, maxEducLevel, oficio
 
-
 bd$maxEducLevel.f <- factor(bd$maxEducLevel) #Converts variable to factor
 bd$oficio.f <- factor(bd$oficio) #Converts variable to factor
+
+#T-test to look at the relevance of the controls
+control_variables <- setdiff(names(bd), c("sex", "maxEducLevel.f", "oficio.f"))
+t_test_results <- data.frame(variable = character(), p_value = numeric(), stringsAsFactors = FALSE)
+for (var in control_variables) {
+  t_test_result <- t.test(bd[bd$sex == 1, var], bd[bd$sex == 0, var])
+  t_test_results <- rbind(t_test_results, data.frame(variable = var, p_value = t_test_result$p.value))
+}
+
+print(t_test_results)
 
 # When applying FWL, the first vector of explanatory variables (#X_1) will only contain the variable female
 
 
 # First, perform the regression without the FWL method to know which results should we expect from the FWL process since outcomes are the same
-results <- lm(log(y_salary_m_hu) ~ sex + poly(age,2, raw = TRUE) + cuentaPropia + formal + hoursWorkUsual + inac + maxEducLevel.f + oficio.f, data = bd)
+results <- lm(log(y_salary_m_hu) ~ sex + poly(age,2, raw = TRUE) + cuentaPropia + formal + hoursWorkUsual + maxEducLevel.f + oficio.f, data = bd)
 stargazer(results, type = "text")
 
 
 #Step 1 from the FWL process. Regress all the X_2 variables against X_1 (sex)
 
 bd <- bd %>%
-  mutate(femaleResidControls = lm(sex ~ poly(age,2, raw = TRUE) + cuentaPropia + formal + hoursWorkUsual + 
-                                    inac + maxEducLevel.f + oficio.f, data = .)$residuals)
+  mutate(femaleResidControls = lm(sex ~ poly(age,2, raw = TRUE) + cuentaPropia + formal + hoursWorkUsual + maxEducLevel.f + oficio.f, data = .)$residuals)
 
 
 #Setp 2 from the FWL process. Regress the outcome variable against the X_2 variables.
 
 bd <- bd %>%
   mutate(log_salaryResidControls = lm(log(y_salary_m_hu) ~ poly(age,2, raw = TRUE) + cuentaPropia + formal + 
-                                        hoursWorkUsual + inac + maxEducLevel.f + oficio.f, 
+                                        hoursWorkUsual + maxEducLevel.f + oficio.f, 
                                       data = .)$residuals)
 
 #Step 3 from the FWL process. Regress the residuals from step 2 as the result variable against the residuals from step 1.
@@ -273,12 +281,11 @@ for(i in 1:B){
   bd_sample<- sample_frac(bd_copy,size=1,replace=TRUE) #takes a sample with replacement of the same size of the original sample (1 or 100%)
   
   bd <- bd %>%
-    mutate(reg_1_bootstrap = lm(sex ~ poly(age,2, raw = TRUE) + cuentaPropia + formal + hoursWorkUsual + 
-                                  inac + maxEducLevel.f + oficio.f, data = .)$residuals)
+    mutate(reg_1_bootstrap = lm(sex ~ poly(age,2, raw = TRUE) + cuentaPropia + formal + hoursWorkUsual + maxEducLevel.f + oficio.f, data = .)$residuals)
   
   bd <- bd %>%
     mutate(reg_2_bootstrap = lm(log(y_salary_m_hu) ~ poly(age,2, raw = TRUE) + cuentaPropia + formal + 
-                                  hoursWorkUsual + inac + maxEducLevel.f + oficio.f, 
+                                  hoursWorkUsual + maxEducLevel.f + oficio.f, 
                                 data = .)$residuals)
   
   reg_3_bootstrap <- lm(reg_2_bootstrap ~ reg_1_bootstrap, data = bd_sample)
@@ -296,29 +303,33 @@ sqrt(var(eta_mod1))
 
 # c) Ploting the age-wage profile (unfinished)
 
-model_male <- lm(log(y_salary_m_hu) ~ poly(age,2, raw = TRUE) + cuentaPropia + formal + hoursWorkUsual + inac, data = bd[bd$sex == 0,])
-model_female <- lm(log(y_salary_m_hu) ~ poly(age,2, raw = TRUE) + cuentaPropia + formal + hoursWorkUsual + inac, data = bd[bd$sex == 1,])
+model_male <- lm(log(y_salary_m_hu) ~ poly(age,2, raw = TRUE), data = bd[bd$sex == 0,])
+model_female <- lm(log(y_salary_m_hu) ~ poly(age,2, raw = TRUE), data = bd[bd$sex == 1,])
 
 # Define a range of ages for prediction
 
 age_range <- seq(min(bd$age), max(bd$age), by = 1)
 
 # Predict wages for males
-control_vars <- c("cuentaPropia", "formal", "hoursWorkUsual", "inac")
+control_vars <- c("cuentaPropia", "formal", "hoursWorkUsual")
 
 pred_male <- predict(model_male, newdata = data.frame(age = age_range, 
-                                                      cuentaPropia = mean(bd$control_vars[bd$sex == 0]), 
-                                                      formal = mean(bd$formal[bd$sex == 0]), 
-                                                      hoursWorkUsual = mean(bd$hoursWorkUsual[bd$sex == 0]), 
-                                                      inac = mean(bd$inac[bd$sex == 0]), 
                      interval = "confidence", level = 0.95))
 
 pred_female <- predict(model_female, newdata = data.frame(age = age_range, 
-                                                      cuentaPropia = mean(bd$control_vars[bd$sex == 1]), 
-                                                      formal = mean(bd$formal[bd$sex == 1]), 
-                                                      hoursWorkUsual = mean(bd$hoursWorkUsual[bd$sex == 1]), 
-                                                      inac = mean(bd$inac[bd$sex == 1]), 
+                                                      cuentaPropia = median(bd$cuentaPropia[bd$sex == 1]),
                                                       interval = "confidence", level = 0.95))
+
+plot(bd$age, log(bd$y_salary_m_hu), col = 'blue', xlab = 'Age', ylab = 'Wage', main = 'Age-Wage Profile')
+
+# Add regression lines for males and females
+lines(age_range, pred_male, col = 'red', lwd = 2)  # Adding regression line for males
+lines(age_range, pred_female, col = 'green', lwd = 2)  # Adding regression line for females
+
+# Add legend
+legend('topright', legend = c('Actual Wages', 'Male Regression Line', 'Female Regression Line'), 
+       col = c('blue', 'red', 'green'), lty = 1, lwd = 2)
+
 
 # 5: Predicting earnings------------------------------------
 
