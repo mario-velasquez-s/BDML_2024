@@ -226,7 +226,7 @@ bd$sex <- 1 - bd$sex
 
 gap_lm_hourly <- lm(log(y_salary_m_hu)~ sex, data = bd)
 stargazer(gap_lm_hourly, type = "text")
-stargazer(gap_lm_hourly, type = "latex", out = "summary_table.tex")
+stargazer(gap_lm_hourly, type = "latex")
 
 
 
@@ -264,6 +264,7 @@ print(latex_table_raw, include.rownames = FALSE)
 # First, perform the regression without the FWL method to know which results should we expect from the FWL process since outcomes are the same
 results <- lm(log(y_salary_m_hu) ~ sex + poly(age,2, raw = TRUE) + cuentaPropia + formal + hoursWorkUsual + maxEducLevel.f + oficio.f, data = bd)
 stargazer(results, type = "text")
+stargazer(results, type = "latex")
 
 
 #Step 1 from the FWL process. Regress all the X_2 variables against X_1 (sex)
@@ -284,7 +285,7 @@ bd <- bd %>%
 reg_res <- lm(log_salaryResidControls ~ femaleResidControls, data = bd)
 stargazer(results, reg_res,type="text",digits=7)
 summary_table <- stargazer(results, reg_res,type="text",digits=7)
-cat(summary_table, file = "summary_table.txt")
+summary_table <- stargazer(results, reg_res,type="latex",digits=7)
 
 #Verificar que la suma de residuales de igual
 sum(resid(results)^2)
@@ -315,11 +316,28 @@ for(i in 1:B){
   eta_mod1[i]<-coefs #saves it in the above vector
 }
 
-length(eta_mod1)
-plot(hist(eta_mod1))
-mean(eta_mod1)
-sqrt(var(eta_mod1))
+length_eta <- length(eta_mod1)
+mean_eta <- mean(eta_mod1)
+std_dev_eta <- sd(eta_mod1)
 
+# Create data frame
+summary_df <- data.frame(Length = length_eta,
+                         Mean = mean_eta,
+                         Std_Dev = std_dev_eta)
+
+# Print the data frame
+print(summary_df)
+
+hist(eta_mod1, 
+     main = "Distribucion de la estimación",
+     xlab = "Valores",
+     ylab = "Frecuencia",
+     col = "skyblue",
+     border = "black")
+
+distribution_summary <- xtable(summary_df, digits = 7)
+# Print the LaTeX code
+print(distribution_summary, include.rownames = FALSE)
 
 # c) Ploting the age-wage profile (unfinished)
 
