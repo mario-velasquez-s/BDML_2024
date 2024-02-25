@@ -22,7 +22,8 @@ p_load(rio, # import/export data
        dplyr,
        ggplot2,
        visdat,
-       caret)   # For predictive model assessment
+       caret,
+       xtable)   # For predictive model assessment
 
 # 1: Initial Data Manipulation -----------------------------------------------
 set.seed(999)
@@ -61,7 +62,8 @@ bd <- bd %>% dplyr::select(y_salary_m_hu, age,
                            maxEducLevel, cuentaPropia, 
                            hoursWorkUsual, inac)
 
-
+without_imputation <- bd
+df_without_imputation <- na.omit(bd)
 ## Here I detect the missing values of the data
 bd_miss <- skim(bd) %>%
   dplyr::select(skim_variable, n_missing)
@@ -224,6 +226,9 @@ bd$sex <- 1 - bd$sex
 
 gap_lm_hourly <- lm(log(y_salary_m_hu)~ sex, data = bd)
 stargazer(gap_lm_hourly, type = "text")
+stargazer(gap_lm_hourly, type = "latex", out = "summary_table.tex")
+
+
 
 # b) Part i. Conditional age gap incorporating controls like age, cuentaPropia, formal, hoursWorkUsual, inac, maxEducLevel, oficio
 
@@ -238,7 +243,20 @@ for (var in control_variables) {
   t_test_results <- rbind(t_test_results, data.frame(variable = var, p_value = t_test_result$p.value))
 }
 
+t_test_results_raw <- data.frame(variable = character(), p_value = numeric(), stringsAsFactors = FALSE)
+for (var in control_variables) {
+  t_test_result_raw <- t.test(df_without_imputation[df_without_imputation$sex == 1, var], df_without_imputation[df_without_imputation$sex == 0, var])
+  t_test_results_raw <- rbind(t_test_results_raw, data.frame(variable = var, p_value = t_test_result_raw$p.value))
+}
+
 print(t_test_results)
+print(t_test_results_raw)
+
+latex_table <- xtable(t_test_results)
+latex_table_raw <- xtable(t_test_results_raw)
+# Print the LaTeX code
+print(latex_table, include.rownames = FALSE)
+print(latex_table_raw, include.rownames = FALSE)
 
 # When applying FWL, the first vector of explanatory variables (#X_1) will only contain the variable female
 
@@ -265,6 +283,8 @@ bd <- bd %>%
 
 reg_res <- lm(log_salaryResidControls ~ femaleResidControls, data = bd)
 stargazer(results, reg_res,type="text",digits=7)
+summary_table <- stargazer(results, reg_res,type="text",digits=7)
+cat(summary_table, file = "summary_table.txt")
 
 #Verificar que la suma de residuales de igual
 sum(resid(results)^2)
