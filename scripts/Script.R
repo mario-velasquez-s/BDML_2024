@@ -355,32 +355,189 @@ print(distribution_summary, include.rownames = FALSE)
 
 # c) Ploting the age-wage profile
 
-model_male <- lm(log(y_salary_m_hu) ~ poly(age,2, raw = TRUE), data = bd[bd$sex == 0,])
-model_female <- lm(log(y_salary_m_hu) ~ poly(age,2, raw = TRUE), data = bd[bd$sex == 1,])
-
-# Define a range of ages for prediction
-
+# Genera un rango de edades desde la mínima a la máxima encontrada en la variable 'age' de 'bd', con incrementos de 1.
 age_range <- seq(min(bd$age), max(bd$age), by = 1)
 
-# Predict wages for males
-control_vars <- c("cuentaPropia", "formal", "hoursWorkUsual")
+# Crea un marco de datos 'conditions' con condiciones para diferentes variables.
+conditions <- data.frame(
+  sex = rep(c(0, 1), each = length(age_range)),  # Valores para sexo (0 y 1), cada uno repetido para cada edad
+  age = rep(age_range, 2),                        # Cada edad repetida dos veces, una para cada sexo
+  cuentaPropia = median(bd$cuentaPropia),         # Valor medio de cuentaPropia
+  formal = median(bd$formal),                    # Valor medio de formal
+  hoursWorkUsual = median(bd$hoursWorkUsual),     # Valor medio de hoursWorkUsual
+  maxEducLevel.f = 6,                            # Valor fijo para maxEducLevel.f
+  oficio.f = 45                                  # Valor fijo para oficio.f
+)
 
-pred_male <- predict(model_male, newdata = data.frame(age = age_range, 
-                     interval = "confidence", level = 0.95))
+# Define niveles para maxEducLevel.f y oficio.f
+education_levels <- c(1:7, 9)  # Niveles de educación
+oficio_levels <- 1:99          # Niveles para oficio
 
-pred_female <- predict(model_female, newdata = data.frame(age = age_range, 
-                                                      cuentaPropia = median(bd$cuentaPropia[bd$sex == 1]),
-                                                      interval = "confidence", level = 0.95))
+# Convierte maxEducLevel.f y oficio.f a factores con niveles especificados
+conditions$maxEducLevel.f <- factor(conditions$maxEducLevel.f, levels = education_levels)
+conditions$oficio.f <- factor(conditions$oficio.f, levels = oficio_levels)
 
-plot(bd$age, log(bd$y_salary_m_hu), col = 'blue', xlab = 'Age', ylab = 'Wage', main = 'Age-Wage Profile')
+# Realiza predicciones separadas para hombres y mujeres
 
-# Add regression lines for males and females
-lines(age_range, pred_male, col = 'red', lwd = 2)  # Adding regression line for males
-lines(age_range, pred_female, col = 'green', lwd = 2)  # Adding regression line for females
+# Perform predictions with confidence intervals
+pred_male <- predict(results, newdata = conditions[conditions$sex == 0,], interval = "confidence")
+pred_female <- predict(results, newdata = conditions[conditions$sex == 1,], interval = "confidence")
 
-# Add legend
-legend('topright', legend = c('Actual Wages', 'Male Regression Line', 'Female Regression Line'), 
-       col = c('blue', 'red', 'green'), lty = 1, lwd = 2)
+# Extract upper and lower confidence limits
+lower_male <- pred_male[, "lwr"]
+upper_male <- pred_male[, "upr"]
+lower_female <- pred_female[, "lwr"]
+upper_female <- pred_female[, "upr"]
+
+# Plot the scatter plot with confidence intervals
+plot(bd$age, log(bd$y_salary_m_hu), col = 'blue', xlab = 'Edad', ylab = 'Log Salario', pch = NA, ylim = c(8,9))
+lines(age_range, pred_male[, "fit"], col = 'red', lwd = 2)  # Regression line for males
+lines(age_range, pred_female[, "fit"], col = 'green', lwd = 2)  # Regression line for females
+lines(age_range, upper_male, col = 'red', lty = 2)  # Upper confidence interval for males
+lines(age_range, lower_male, col = 'red', lty = 2)  # Lower confidence interval for males
+lines(age_range, upper_female, col = 'green', lty = 2)  # Upper confidence interval for females
+lines(age_range, lower_female, col = 'green', lty = 2)  # Lower confidence interval for females
+
+# Add legend (ignoring the label for 'Salarios Reales')
+legend('topright', legend = c(NA, 'Línea de Regresión para Hombres', 'Línea de Regresión para Mujeres', 'Intervalo de Confianza para Hombres', 'Intervalo de Confianza para Mujeres'), 
+       col = c('blue', 'red', 'green', 'red', 'green'), lty = c(NA, 1, 1, 2, 2), lwd = c(NA, 2, 2, 1, 1))
+
+
+#Ahora asumiendo, por ejemplo, que se trata de ejecutivos con alto logro educativo
+
+conditions <- data.frame(
+  sex = rep(c(0, 1), each = length(age_range)),  # Valores para sexo (0 y 1), cada uno repetido para cada edad
+  age = rep(age_range, 2),                        # Cada edad repetida dos veces, una para cada sexo
+  cuentaPropia = median(bd$cuentaPropia),         # Valor medio de cuentaPropia
+  formal = median(bd$formal),                    # Valor medio de formal
+  hoursWorkUsual = median(bd$hoursWorkUsual),     # Valor medio de hoursWorkUsual
+  maxEducLevel.f = 7,                            # Educación terciaria
+  oficio.f = 21                                  # Ejecutivos o gerentes
+)
+
+# Define niveles para maxEducLevel.f y oficio.f
+education_levels <- c(1:7, 9)  # Niveles de educación
+oficio_levels <- 1:99          # Niveles para oficio
+
+# Convierte maxEducLevel.f y oficio.f a factores con niveles especificados
+conditions$maxEducLevel.f <- factor(conditions$maxEducLevel.f, levels = education_levels)
+conditions$oficio.f <- factor(conditions$oficio.f, levels = oficio_levels)
+
+
+# Perform predictions with confidence intervals
+pred_male <- predict(results, newdata = conditions[conditions$sex == 0,], interval = "confidence")
+pred_female <- predict(results, newdata = conditions[conditions$sex == 1,], interval = "confidence")
+
+# Extract upper and lower confidence limits
+lower_male <- pred_male[, "lwr"]
+upper_male <- pred_male[, "upr"]
+lower_female <- pred_female[, "lwr"]
+upper_female <- pred_female[, "upr"]
+
+# Plot the scatter plot with confidence intervals
+plot(bd$age, log(bd$y_salary_m_hu), col = 'blue', xlab = 'Edad', ylab = 'Log Salario', pch = NA, ylim = c(8.8,10))
+lines(age_range, pred_male[, "fit"], col = 'red', lwd = 2)  # Regression line for males
+lines(age_range, pred_female[, "fit"], col = 'green', lwd = 2)  # Regression line for females
+lines(age_range, upper_male, col = 'red', lty = 2)  # Upper confidence interval for males
+lines(age_range, lower_male, col = 'red', lty = 2)  # Lower confidence interval for males
+lines(age_range, upper_female, col = 'green', lty = 2)  # Upper confidence interval for females
+lines(age_range, lower_female, col = 'green', lty = 2)  # Lower confidence interval for females
+
+# Add legend (ignoring the label for 'Salarios Reales')
+legend('topright', legend = c(NA, 'Línea de Regresión para Hombres', 'Línea de Regresión para Mujeres', 'Intervalo de Confianza para Hombres', 'Intervalo de Confianza para Mujeres'), 
+       col = c('blue', 'red', 'green', 'red', 'green'), lty = c(NA, 1, 1, 2, 2), lwd = c(NA, 2, 2, 1, 1))
+
+#Ahora asumiendo, por ejemplo, que se trata de docentes con alto logro educativo
+
+conditions <- data.frame(
+  sex = rep(c(0, 1), each = length(age_range)),  # Valores para sexo (0 y 1), cada uno repetido para cada edad
+  age = rep(age_range, 2),                        # Cada edad repetida dos veces, una para cada sexo
+  cuentaPropia = median(bd$cuentaPropia),         # Valor medio de cuentaPropia
+  formal = median(bd$formal),                    # Valor medio de formal
+  hoursWorkUsual = median(bd$hoursWorkUsual),     # Valor medio de hoursWorkUsual
+  maxEducLevel.f = 7,                            # Educación terciaria
+  oficio.f = 13                                  # Docentes
+)
+
+# Define niveles para maxEducLevel.f y oficio.f
+education_levels <- c(1:7, 9)  # Niveles de educación
+oficio_levels <- 1:99          # Niveles para oficio
+
+# Convierte maxEducLevel.f y oficio.f a factores con niveles especificados
+conditions$maxEducLevel.f <- factor(conditions$maxEducLevel.f, levels = education_levels)
+conditions$oficio.f <- factor(conditions$oficio.f, levels = oficio_levels)
+
+
+# Perform predictions with confidence intervals
+pred_male <- predict(results, newdata = conditions[conditions$sex == 0,], interval = "confidence")
+pred_female <- predict(results, newdata = conditions[conditions$sex == 1,], interval = "confidence")
+
+# Extract upper and lower confidence limits
+lower_male <- pred_male[, "lwr"]
+upper_male <- pred_male[, "upr"]
+lower_female <- pred_female[, "lwr"]
+upper_female <- pred_female[, "upr"]
+
+# Plot the scatter plot with confidence intervals
+plot(bd$age, log(bd$y_salary_m_hu), col = 'blue', xlab = 'Edad', ylab = 'Log Salario', pch = NA, ylim = c(8.6,9.8))
+lines(age_range, pred_male[, "fit"], col = 'red', lwd = 2)  # Regression line for males
+lines(age_range, pred_female[, "fit"], col = 'green', lwd = 2)  # Regression line for females
+lines(age_range, upper_male, col = 'red', lty = 2)  # Upper confidence interval for males
+lines(age_range, lower_male, col = 'red', lty = 2)  # Lower confidence interval for males
+lines(age_range, upper_female, col = 'green', lty = 2)  # Upper confidence interval for females
+lines(age_range, lower_female, col = 'green', lty = 2)  # Lower confidence interval for females
+
+# Add legend (ignoring the label for 'Salarios Reales')
+legend('topright', legend = c(NA, 'Línea de Regresión para Hombres', 'Línea de Regresión para Mujeres', 'Intervalo de Confianza para Hombres', 'Intervalo de Confianza para Mujeres'), 
+       col = c('blue', 'red', 'green', 'red', 'green'), lty = c(NA, 1, 1, 2, 2), lwd = c(NA, 2, 2, 1, 1))
+
+#Ahora asumiendo, por ejemplo, que se trata de agricultores sin logro educativo
+
+conditions <- data.frame(
+  sex = rep(c(0, 1), each = length(age_range)),  # Valores para sexo (0 y 1), cada uno repetido para cada edad
+  age = rep(age_range, 2),                        # Cada edad repetida dos veces, una para cada sexo
+  cuentaPropia = median(bd$cuentaPropia),         # Valor medio de cuentaPropia
+  formal = median(bd$formal),                    # Valor medio de formal
+  hoursWorkUsual = median(bd$hoursWorkUsual),     # Valor medio de hoursWorkUsual
+  maxEducLevel.f = 1,                            # Sin logro educativo
+  oficio.f = 61                                  # Agricultores
+)
+median(bd$cuentaPropia)
+median(bd$formal)
+
+
+# Define niveles para maxEducLevel.f y oficio.f
+education_levels <- c(1:7, 9)  # Niveles de educación
+oficio_levels <- 1:99          # Niveles para oficio
+
+# Convierte maxEducLevel.f y oficio.f a factores con niveles especificados
+conditions$maxEducLevel.f <- factor(conditions$maxEducLevel.f, levels = education_levels)
+conditions$oficio.f <- factor(conditions$oficio.f, levels = oficio_levels)
+
+
+# Perform predictions with confidence intervals
+pred_male <- predict(results, newdata = conditions[conditions$sex == 0,], interval = "confidence")
+pred_female <- predict(results, newdata = conditions[conditions$sex == 1,], interval = "confidence")
+
+# Extract upper and lower confidence limits
+lower_male <- pred_male[, "lwr"]
+upper_male <- pred_male[, "upr"]
+lower_female <- pred_female[, "lwr"]
+upper_female <- pred_female[, "upr"]
+
+# Plot the scatter plot with confidence intervals
+plot(bd$age, log(bd$y_salary_m_hu), col = 'blue', xlab = 'Edad', ylab = 'Log Salario', pch = NA, ylim = c(8,9.8))
+lines(age_range, pred_male[, "fit"], col = 'red', lwd = 2)  # Regression line for males
+lines(age_range, pred_female[, "fit"], col = 'green', lwd = 2)  # Regression line for females
+lines(age_range, upper_male, col = 'red', lty = 2)  # Upper confidence interval for males
+lines(age_range, lower_male, col = 'red', lty = 2)  # Lower confidence interval for males
+lines(age_range, upper_female, col = 'green', lty = 2)  # Upper confidence interval for females
+lines(age_range, lower_female, col = 'green', lty = 2)  # Lower confidence interval for females
+
+# Add legend (ignoring the label for 'Salarios Reales')
+legend('topright', legend = c(NA, 'Línea de Regresión para Hombres', 'Línea de Regresión para Mujeres', 'Intervalo de Confianza para Hombres', 'Intervalo de Confianza para Mujeres'), 
+       col = c('blue', 'red', 'green', 'red', 'green'), lty = c(NA, 1, 1, 2, 2), lwd = c(NA, 2, 2, 1, 1))
+
 
 
 # 5: Predicting earnings------------------------------------
