@@ -110,8 +110,8 @@ ggplot(bd) +
 #ggplot(data=bd, mapping = aes(as.factor(age), y_salary_m_hu)) +  geom_boxplot() 
 
 bd <- bd %>% 
-  group_by(age) %>%
-  mutate(y_salary_m_hu = if_else(is.na(y_salary_m_hu),median(y_salary_m_hu, na.rm=TRUE),y_salary_m_hu)) %>%
+  group_by(estrato1) %>%
+  mutate(y_salary_m_hu = if_else(is.na(y_salary_m_hu),mean(y_salary_m_hu, na.rm=TRUE),y_salary_m_hu)) %>%
   ungroup()
 
 ## We check again the missing values
@@ -119,29 +119,8 @@ bd_miss <- skim(bd) %>%   dplyr::select(skim_variable, n_missing)
 nobs=nrow(bd)
 bd_miss <- bd_miss %>%   mutate(p_missing= n_missing/nobs)
 bd_miss <- bd_miss %>%   arrange(-n_missing)
-bd_miss ## There are still 37 missings.
+bd_miss ## No missings.
 
-## These are because there was any reported hourly wage for these observations, so
-## There wasn't median. We explore the age of the missing observations and we noticed
-## They are all above 74. This probably is because these people are already retired
-## and they could fear to lose their retirement payment if they report additional incomes
-## or because they are old they could have forgotten the value. In any case, because
-## we are not sure, we prefer to erase such observations. After all, they only represent the
-## 0,2 % of observations.
-
-## PREGUNTAR EN EQUIPO SI VALE LA PENA ABORDAR CENSURA ACÁ
-
-reason_missings <- bd %>% 
-  filter(is.na(y_salary_m_hu)) %>%
-  arrange(-age) %>%
-  dplyr::select(`age`)
-summary(reason_missings)
-view(reason_missings)
-
-bd <- bd %>% filter(!is.na(y_salary_m_hu)) 
-
-
-vis_miss(bd) ## No missings and 16504 obs.
 
 # 2a: Variables and Descriptive Statistics ------------------------------------
 names(bd)
