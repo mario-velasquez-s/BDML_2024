@@ -427,6 +427,51 @@ predictions <- predict(modelo_cv2, testing)
 score_cv2<- RMSE(predictions, testing$y_salary_m_hu )
 score_cv2 # 10584.76
 
+# Model 3 - possible variables education, age, sex (interactions), duration at job, kids (dependents), type of job
+
+
+form_3<- log(y_salary_m_hu)~ sex.f + oficio.f + age + formal.f + maxEducLevel.f
+
+modelo_cv3 <- lm(form_3,
+                 data = training)
+
+
+# Model 4 - 
+
+form_4<- log(y_salary_m_hu)~  sex.f + oficio.f + age + (age^2) + formal.f + maxEducLevel.f
+
+modelo_cv4 <- lm(form_4,
+                 data = training)
+
+
+# Model 5 - 
+
+form_5<- log(y_salary_m_hu)~  sex.f + oficio.f + age + (age^2) + (age^3) + formal.f + maxEducLevel.f
+
+modelo_cv5 <- lm(form_5,
+                 data = training)
+
+# Model 6 - 
+
+form_6<- log(y_salary_m_hu)~  sex.f + oficio.f + sex.f*oficio.f + age + (age^2) + formal.f + maxEducLevel.f 
+
+modelo_cv6 <- lm(form_6,
+                 data = training)
+
+# Model 7 - 
+
+form_7<- log(y_salary_m_hu)~  sex.f + oficio.f + sex.f*age + age + (age^2) + formal.f + maxEducLevel.f 
+
+modelo_cv7 <- lm(form_7,
+                 data = training)
+
+stargazer(form_7)
+
+
+
+
+
+
   # b. Comparing models based on RMSE
 
 # para por ahora
