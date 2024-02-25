@@ -171,7 +171,7 @@ ggplot(bd) +
 # 3: Age-wage Profile --------------------------------------------------------
 
 # Creo que no es y_ingLab_m sino y_salary_m_hu (o y_ingLab_m_ha), deberiamos ponernos de acuerdo
-modelo_punto_3 <- lm(log(y_ingLab_m) ~ age + I(age^2), data = bd)
+modelo_punto_3 <- lm(log(y_salary_m_hu) ~ age + I(age^2), data = bd)
 
 stargazer(modelo_punto_3, title="Regresión de salario contra edad", type="latex", out="regresion_punto_3.tex")
 stargazer(modelo_punto_3, title="Regresión de salario contra edad - texto", type="text")
@@ -179,22 +179,24 @@ stargazer(modelo_punto_3, title="Regresión de salario contra edad - texto", typ
 # Funcion del "peak-age"
 bootstrap_peak_age <- function(bd, indices) {
   sampled_data <- bd[indices, ]
-  modelo_boot <- lm(log(y_ingLab_m) ~ age + I(age^2), data = sampled_data)
+  modelo_boot <- lm(log(y_salary_m_hu) ~ age + I(age^2), data = sampled_data)
   
   # Calculate peak age using the formula: -b1 / (2 * b2)
   peak_age <- -coef(modelo_boot)[2] / (2 * coef(modelo_boot)[3])
   return(peak_age)
 }
 
-bootstrap_peak_age_results <- boot(bd, bootstrap_peak_age, R = 1000)
+bootstrap_peak_age_results <- boot(bd, bootstrap_peak_age, R = 5000)
 
 
-peak_age_conf_intervals <- boot.ci(bootstrap_peak_age_results, type = "bca")
+hist(bootstrap_peak_age_results$t, main = "Distribucion de 'Peak Age'", xlab = "Peak Age", ylab = "Frecuencia", col = "lightblue", border = "black", breaks=25)
 
-hist(bootstrap_peak_age_results$t, main = "Distribucion de 'Peak Age'", xlab = "Peak Age", ylab = "Frecuencia", col = "lightblue", border = "black")
+ci_lower <- quantile(bootstrap_peak_age_results$t, 0.025)
+ci_upper <- quantile(bootstrap_peak_age_results$t, 0.975)
 
-abline(v = peak_age_conf_intervals$bca[4], col = "red", lty = 2)
-abline(v = peak_age_conf_intervals$bca[5], col = "red", lty = 2)
+abline(v = ci_lower, col = "red", lty = 2)
+abline(v = ci_upper, col = "red", lty = 2)
+
 
 
 
