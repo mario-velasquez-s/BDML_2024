@@ -221,14 +221,14 @@ abline(v = peak_age_conf_intervals$bca[5], col = "red", lty = 2)
 #In the regression, women = 1 so I edit bd so that women = 1 and man = 0
 
 bd$sex <- 1 - bd$sex
+df_without_imputation$sex <- 1 - df_without_imputation$sex
 
 # a) Estimating the unconditional wage gap
 
 gap_lm_hourly <- lm(log(y_salary_m_hu)~ sex, data = bd)
+gap_lm_hourly_ni <- lm(log(y_salary_m_hu)~ sex, data = df_without_imputation)
 stargazer(gap_lm_hourly, type = "text")
-stargazer(gap_lm_hourly, type = "latex")
-
-
+stargazer(gap_lm_hourly, gap_lm_hourly_ni, type = "latex")
 
 # b) Part i. Conditional age gap incorporating controls like age, cuentaPropia, formal, hoursWorkUsual, inac, maxEducLevel, oficio
 
@@ -264,7 +264,22 @@ print(latex_table_raw, include.rownames = FALSE)
 # First, perform the regression without the FWL method to know which results should we expect from the FWL process since outcomes are the same
 results <- lm(log(y_salary_m_hu) ~ sex + poly(age,2, raw = TRUE) + cuentaPropia + formal + hoursWorkUsual + maxEducLevel.f + oficio.f, data = bd)
 stargazer(results, type = "text")
-stargazer(results, type = "latex")
+
+bd<- bd %>% mutate(leverage = hatvalues(results))
+bd<- bd %>% mutate(residuals= results$residuals)
+
+ggplot(bd , aes(y = leverage , x = residuals  )) +
+  geom_point() + # add points
+  theme_bw() + #black and white theme
+  labs(x = "Residuales",  
+       y = "Leverage",
+       title = "") # labels
+p <- mean(bd$leverage)
+cutt <- 3*p
+bd_no_leverage <-  bd %>% 
+  dplyr:: filter(leverage<= cutt)
+
+results_no_leverage <- lm(log(y_salary_m_hu) ~ sex + poly(age,2, raw = TRUE) + cuentaPropia + formal + hoursWorkUsual + maxEducLevel.f + oficio.f, data = bd_no_leverage)
 
 
 #Step 1 from the FWL process. Regress all the X_2 variables against X_1 (sex)
@@ -284,8 +299,7 @@ bd <- bd %>%
 
 reg_res <- lm(log_salaryResidControls ~ femaleResidControls, data = bd)
 stargazer(results, reg_res,type="text",digits=7)
-summary_table <- stargazer(results, reg_res,type="text",digits=7)
-summary_table <- stargazer(results, reg_res,type="latex",digits=7)
+summary_table <- stargazer(results, results_no_leverage, reg_res,type="text",digits=4)
 
 #Verificar que la suma de residuales de igual
 sum(resid(results)^2)
@@ -294,20 +308,19 @@ sum(resid(reg_res)^2)
 # b) Part ii. Using FWL with bootstrap
 
 B <- 1000
-eta_mod1 <- rep(0,B)
-bd_copy <- bd
+eta_mod1 <- rep(0,1000)
 
 for(i in 1:B){
   
-  bd_sample<- sample_frac(bd_copy,size=1,replace=TRUE) #takes a sample with replacement of the same size of the original sample (1 or 100%)
+  bd_sample<- sample_frac(bd,size=1,replace=TRUE) #takes a sample with replacement of the same size of the original sample (1 or 100%)
   
   bd <- bd %>%
-    mutate(reg_1_bootstrap = lm(sex ~ poly(age,2, raw = TRUE) + cuentaPropia + formal + hoursWorkUsual + maxEducLevel.f + oficio.f, data = .)$residuals)
+    mutate(reg_1_bootstrap = lm(sex ~ poly(age,2, raw = TRUE) + cuentaPropia + formal + hoursWorkUsual + maxEducLevel.f + oficio.f, data = bd_sample)$residuals)
   
   bd <- bd %>%
     mutate(reg_2_bootstrap = lm(log(y_salary_m_hu) ~ poly(age,2, raw = TRUE) + cuentaPropia + formal + 
                                   hoursWorkUsual + maxEducLevel.f + oficio.f, 
-                                data = .)$residuals)
+                                data = bd_sample)$residuals)
   
   reg_3_bootstrap <- lm(reg_2_bootstrap ~ reg_1_bootstrap, data = bd_sample)
   
@@ -335,11 +348,12 @@ hist(eta_mod1,
      col = "skyblue",
      border = "black")
 
+
 distribution_summary <- xtable(summary_df, digits = 7)
 # Print the LaTeX code
 print(distribution_summary, include.rownames = FALSE)
 
-# c) Ploting the age-wage profile (unfinished)
+# c) Ploting the age-wage profile
 
 model_male <- lm(log(y_salary_m_hu) ~ poly(age,2, raw = TRUE), data = bd[bd$sex == 0,])
 model_female <- lm(log(y_salary_m_hu) ~ poly(age,2, raw = TRUE), data = bd[bd$sex == 1,])
