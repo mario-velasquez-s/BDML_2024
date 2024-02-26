@@ -82,15 +82,16 @@ vis_miss(bd)
 ## First, we will drop the only observation with missing maxEducLevel
 bd <- bd %>% filter(!is.na(maxEducLevel))
 
-## Now, we will impute the rest using the hourly wage 
+## Now, we will impute the hourly wage
 
 # Distribution of hourly wage
-ggplot(bd, aes(y_salary_m_hu)) +
+impu_1 <- ggplot(bd, aes(y_salary_m_hu)) +
   geom_histogram(color = "#000000", fill = "#0099F8") +
   geom_vline(xintercept = median(bd$y_salary_m_hu, na.rm = TRUE), linetype = "dashed", color = "red") +
   geom_vline(xintercept = mean(bd$y_salary_m_hu, na.rm = TRUE), linetype = "dashed", color = "blue") +
   theme_classic() +
   theme(plot.title = element_text(size = 18))
+#ggsave("C:/Users/Maria.Arias/OneDrive - Universidad de los andes/MSc Economics/Big Data & Machine Learning/Problem set 1/BDML_2024/views/imputation/distri_wage.pdf", impu_1)
 
 #Distribution of hourly wage with the mean by sex
 ggplot(bd) +
@@ -101,14 +102,26 @@ ggplot(bd) +
   theme(plot.title = element_text(size = 18)) +
   scale_fill_manual(values = c("0"="#F36A60" , "1"="#46B4CA"), labels = c("0"="Mujer", "1"="Hombre"), name="Sexo")
 
-## Since the graph shows me a long right tail and, 
-## the two variables we will use to predict are sex and age, and
-## the mean by women and men are not so different, 
-## we will impute with the median of hourly wage conditioned to the age
+## The graph shows me a long right tail and, 
+## the two variables we will use to predict are sex and age.
+## According to the literature in Colombia, the social strata and
+## the hourly wage are strongly correlated.
+
+impu_2 <- ggplot(data=bd, mapping = aes(as.factor(estrato1), y_salary_m_hu)) +
+  geom_boxplot() +
+  xlab("Estrato") + 
+  ylab("Salario horario") +
+  theme_bw()
+#ggsave("C:/Users/Maria.Arias/OneDrive - Universidad de los andes/MSc Economics/Big Data & Machine Learning/Problem set 1/BDML_2024/views/imputation/wage_estrato1.pdf", impu_2)
+
+## In addition, the social strata (estrato1) are independent to sex and age.
+estrato_orto <- lm(estrato1 ~ age + as.factor(sex), bd)
+summary(estrato_orto) ## Coeficientes muy cercanos a 0.
+impu_3<-stargazer(estrato_orto, type="latex", title="Relación estrato vs edad y sexo")
+#write(impu_3, file="C:/Users/Maria.Arias/OneDrive - Universidad de los andes/MSc Economics/Big Data & Machine Learning/Problem set 1/BDML_2024/views/imputation/estrato1_age_sex.tex")
+
+## Therefore, we will impute with the mean of hourly wage conditioned to the estrato1
 ## in order to avoid affecting the prediction model.
-
-#ggplot(data=bd, mapping = aes(as.factor(age), y_salary_m_hu)) +  geom_boxplot() 
-
 bd <- bd %>% 
   group_by(estrato1) %>%
   mutate(y_salary_m_hu = if_else(is.na(y_salary_m_hu),mean(y_salary_m_hu, na.rm=TRUE),y_salary_m_hu)) %>%
@@ -128,42 +141,45 @@ names(bd)
 ##Summary of all variables
 des_vars <- c("age", "sex", "hoursWorkUsual", "formal", "cuentaPropia")
 stargazer::stargazer(as.data.frame(bd[,des_vars]), type="latex", title="Descriptivas de las variables explicatorias",
-                     out="C:/Users/Maria.Arias/OneDrive - Universidad de los andes/MSc Economics/Big Data & Machine Learning/Problem set 1/BDML_2024/views/descriptivas_numericas.tex")
+                     out="C:/Users/Maria.Arias/OneDrive - Universidad de los andes/MSc Economics/Big Data & Machine Learning/Problem set 1/BDML_2024/views/descriptive/descriptivas_numericas.tex")
 
 ## Graph to describe "maxEducLevel", "estrato1"
 bd$maxEducLevel <- factor(bd$maxEducLevel, levels = c(1,2,3,4,5,6,7,9), 
                           labels = c("Ninguno", "Pre-escolar", "Primaria incompleta", "Primaria completa",
                                      "Secundaria incompleta", "Secundaria completa","Terciaria","N/A"))
 
-ggplot(bd, aes(x=maxEducLevel)) + 
+des_2 <- ggplot(bd, aes(x=maxEducLevel)) + 
   geom_bar(fill="#0099F8") +
   labs(x="Máximo nivel de educación alcanzado",
          y= "Cantidad") + 
   theme_bw() ## Esta distribución parecería atípica, pero como nuestra muestra sólo contiene 
             ## personas ocupadas, puede que tenga sentido. Completar con estadísticas laborales en documento.
+ggsave("C:/Users/Maria.Arias/OneDrive - Universidad de los andes/MSc Economics/Big Data & Machine Learning/Problem set 1/BDML_2024/views/descriptive/descriptiva_maxEduc.pdf", des_2)
 
-ggplot(bd, aes(x=as.factor(estrato1))) + 
+des_3 <- ggplot(bd, aes(x=as.factor(estrato1))) + 
   geom_bar(fill="#0099F8") +
   labs(x="Estrato de energía",
        y= "Cantidad") + 
   theme_bw()
+ggsave("C:/Users/Maria.Arias/OneDrive - Universidad de los andes/MSc Economics/Big Data & Machine Learning/Problem set 1/BDML_2024/views/descriptive/descriptiva_estrato.pdf", des_3)
 
 
 ## Graph of why to transform wage to ln(wage)
 bd$ln_wage <- log(bd$y_salary_m_hu)
-ggplot(bd, aes(x=ln_wage)) +
+des_4 <- ggplot(bd, aes(x=ln_wage)) +
   geom_histogram(fill="#0099F8") +
   labs(x="ln(salario horario)", y="Frecuencia") +
   theme_bw()
+ggsave("C:/Users/Maria.Arias/OneDrive - Universidad de los andes/MSc Economics/Big Data & Machine Learning/Problem set 1/BDML_2024/views/descriptive/descriptiva_ln_salario.pdf", des_4)
 
 ## Graph of age vs wage
 bd$sex <- factor(bd$sex, levels=c(0,1), labels = c("Mujer", "Hombre"))
-ggplot(bd) + 
+des_5 <- ggplot(bd) + 
   geom_point(mapping = aes(x=age, y=ln_wage, color=as.factor(sex))) + 
   geom_smooth(mapping = aes(x=age, y=ln_wage)) +
   labs(x="Edad", y="ln(salario horario)") + 
   theme_bw()
-
+ggsave("C:/Users/Maria.Arias/OneDrive - Universidad de los andes/MSc Economics/Big Data & Machine Learning/Problem set 1/BDML_2024/views/descriptive/descriptiva_salario_predictores.pdf", des_5)
 
 
 
