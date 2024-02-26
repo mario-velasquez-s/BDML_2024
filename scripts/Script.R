@@ -548,7 +548,7 @@ legend('topright', legend = c(NA, 'Línea de Regresión para Hombres', 'Línea d
 
 
 inTrain <- createDataPartition(
-  y = bd$y_salary_m_hu,  ## the outcome data are needed
+  y = bd$ln_wage,  ## the outcome data are needed
   p = .70, ## The percentage of data in the
   list = FALSE
 )
@@ -563,7 +563,7 @@ testing <- testing %>% filter(oficio!=96)
 
 # Model 1 - modelo punto 3
 # Training
-form_1<- log(y_salary_m_hu) ~ age + I(age^2) 
+form_1<- ln_wage ~ age + I(age^2) 
 
 
 modelo_cv1 <- lm(form_1,
@@ -572,13 +572,13 @@ modelo_cv1 <- lm(form_1,
 predictions <- predict(modelo_cv1, testing)
 
 
-score_cv1<- RMSE(predictions, testing$y_salary_m_hu )
+score_cv1<- RMSE(predictions, testing$ln_wage )
 score_cv1 # 10584.75
 
 
 # Model 2 - unconditional wage gap
 # Training
-form_2<- log(y_salary_m_hu)~ sex
+form_2<- ln_wage~ sex
 
 modelo_cv2 <- lm(form_2,
                data = training)
@@ -586,7 +586,7 @@ modelo_cv2 <- lm(form_2,
 predictions <- predict(modelo_cv2, testing)
 
 
-score_cv2<- RMSE(predictions, testing$y_salary_m_hu )
+score_cv2<- RMSE(predictions, testing$ln_wage )
 score_cv2 # 10584.76
 
 # Model 3 - En este modelo se tiene en cuenta la edad, el sexo, el oficio, el 
@@ -595,7 +595,7 @@ score_cv2 # 10584.76
 
 
 
-form_3<- log(y_salary_m_hu)~ sex  + oficio.f +age + formal + maxEducLevel.f + cuentaPropia
+form_3<- ln_wage ~ sex +age + maxEducLevel.f 
 
 modelo_cv3 <- lm(form_3,
                  data = training)
@@ -603,14 +603,14 @@ modelo_cv3 <- lm(form_3,
 predictions <- predict(modelo_cv3, testing)
 
 
-score_cv3<- RMSE(predictions, testing$y_salary_m_hu )
+score_cv3<- RMSE(predictions, testing$ln_wage )
 
 
 # Model 4 - para est emodelo se explora la relación cuadrática que puede haber 
 # entre la edad y los ingresos y el tiempo de duración en el trabajo actual y no 
 # tomamos en cuenta si es formal y si trabaja por cuenta propia
 
-form_4<- log(y_salary_m_hu)~  sex + oficio.f + age + (age^2) + maxEducLevel.f  + p6426 
+form_4<- ln_wage ~  sex + oficio.f + age + (age^2) + maxEducLevel.f  + p6426 
 
 modelo_cv4 <- lm(form_4,
                  data = training)
@@ -619,13 +619,13 @@ modelo_cv4 <- lm(form_4,
 predictions <- predict(modelo_cv4, testing)
 
 
-score_cv4<- RMSE(predictions, testing$y_salary_m_hu )
+score_cv4<- RMSE(predictions, testing$ln_wage )
 
 
 # Model 5 - Se explora un polinomo de grado 3 para la edad, para ver si hay 
 # alguna diferencia interesante con respecto al polinomio de grado 2
 
-form_5<- log(y_salary_m_hu)~  sex + oficio.f + age + (age^2) + (age^3) + (age^4) + maxEducLevel.f 
+form_5<- ln_wage ~  sex + oficio.f + age + (age^2) + (age^3) + maxEducLevel.f 
 
 modelo_cv5 <- lm(form_5,
                  data = training)
@@ -634,13 +634,13 @@ modelo_cv5 <- lm(form_5,
 predictions <- predict(modelo_cv5, testing)
 
 
-score_cv5<- RMSE(predictions, testing$y_salary_m_hu )
+score_cv5<- RMSE(predictions, testing$ln_wage )
 
 # Model 6 - Se explora la posible interacción entre el tipo de oficio y el sexo, 
 # este modelo está pensado en las existentes brechas que hay en ciertos sectores
 # de remuneración más alta donde dominan los hombres
 
-form_6<- log(y_salary_m_hu)~  sex + oficio + sex*oficio.f + age + (age^2) + sex*formal + maxEducLevel.f + p6426  + cuentaPropia
+form_6<- ln_wage ~  sex + oficio + sex*oficio.f + age + (age^2) + sex*formal + formal + maxEducLevel.f + p6426  + cuentaPropia
 
 modelo_cv6 <- lm(form_6,
                  data = training)
@@ -649,12 +649,12 @@ modelo_cv6 <- lm(form_6,
 predictions <- predict(modelo_cv6, testing)
 
 
-score_cv6<- RMSE(predictions, testing$y_salary_m_hu )
+score_cv6<- RMSE(predictions, testing$ln_wage )
 
 # Model 7 - Este modelo explora si existe alguna relación entre la edad entre 
 # hombres y mujeres y sus ingresos
 
-form_7<- log(y_salary_m_hu)~  sex + oficio.f + sex*age + age + (age^2) + formal + maxEducLevel.f + p6426  + cuentaPropia
+form_7<- ln_wage ~  sex + oficio.f + maxEducLevel.f*sex + age + (age^2) + formal + maxEducLevel.f + p6426  + cuentaPropia
 
 modelo_cv7 <- lm(form_7,
                  data = training)
@@ -663,30 +663,20 @@ modelo_cv7 <- lm(form_7,
 predictions <- predict(modelo_cv7, testing)
 
 
-score_cv7<- RMSE(predictions, testing$y_salary_m_hu )
+score_cv7<- RMSE(predictions, testing$ln_wage )
 
 
 
 
   # b. Comparing models based on RMSE
 
-# para por ahora
-scores_cv<- data.frame( Model= c(1, 2),
-                     RMSE_vsa= c(score_cv1, score_cv2)
-)
-
 
 scores_cv<- data.frame( Model= c(1, 2, 3, 4, 5, 6, 7),
                      RMSE_vsa= c(score_cv1, score_cv2, score_cv3, score_cv4, 
                                  score_cv5, score_cv6, score_cv7))
 
-head(scores_cv)
-
-stargazer(modelo_cv1, modelo_cv2, modelo_cv3, modelo_cv4, modelo_cv5, type="text", out="models.txt")
-
-
-stargazer(modelo_cv1, modelo_cv2, modelo_cv3, modelo_cv4, modelo_cv5, 
-          modelo_cv6, modelo_cv7, type="text", out="models.txt")
+scores_cv
+# Models 6 and 7 have de lowest RMSE
 
 
   # c. Comments on results 
@@ -696,21 +686,24 @@ stargazer(modelo_cv1, modelo_cv2, modelo_cv3, modelo_cv4, modelo_cv5,
 ctrl <- trainControl(
   method = "LOOCV") 
 
-modelo_loocv1 <- train(FALTA DEFINIR,
-                  data = db,
+modelo_loocv1 <- train(form_6,
+                  data = bd,
                   method = 'lm', 
                   trControl= ctrl)
 
-score_loocv1<-RMSE(modelo1c$pred$pred, db$totalHoursWorked)
+head(modelo_loocv1$pred)
+
+score_loocv1<-RMSE(modelo_loocv1$pred$pred, bd$ln_wage)
 
 
 
-modelo_loocv2 <- train(FALTA DEFINIR,
-                       data = db,
+modelo_loocv2 <- train(form_7,
+                       data = bd,
                        method = 'lm', 
                        trControl= ctrl)
+head(modelo_loocv2$pred)
 
-score_loocv2<-RMSE(modelo1c$pred$pred, db$totalHoursWorked)
+score_loocv2<-RMSE(modelo_loocv2$pred$pred, bd$ln_wage)
 
 
 
