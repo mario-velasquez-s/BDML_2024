@@ -227,8 +227,6 @@ df_without_imputation$sex <- 1 - df_without_imputation$sex
 
 gap_lm_hourly <- lm(log(y_salary_m_hu)~ sex, data = bd)
 gap_lm_hourly_ni <- lm(log(y_salary_m_hu)~ sex, data = df_without_imputation)
-stargazer(gap_lm_hourly, type = "text")
-stargazer(gap_lm_hourly, gap_lm_hourly_ni, type = "latex")
 
 # b) Part i. Conditional age gap incorporating controls like age, cuentaPropia, formal, hoursWorkUsual, inac, maxEducLevel, oficio
 
@@ -243,37 +241,30 @@ for (var in control_variables) {
   t_test_results <- rbind(t_test_results, data.frame(variable = var, p_value = t_test_result$p.value))
 }
 
-t_test_results_raw <- data.frame(variable = character(), p_value = numeric(), stringsAsFactors = FALSE)
-for (var in control_variables) {
-  t_test_result_raw <- t.test(df_without_imputation[df_without_imputation$sex == 1, var], df_without_imputation[df_without_imputation$sex == 0, var])
-  t_test_results_raw <- rbind(t_test_results_raw, data.frame(variable = var, p_value = t_test_result_raw$p.value))
-}
-
 print(t_test_results)
-print(t_test_results_raw)
 
 latex_table <- xtable(t_test_results)
-latex_table_raw <- xtable(t_test_results_raw)
 # Print the LaTeX code
 print(latex_table, include.rownames = FALSE)
-print(latex_table_raw, include.rownames = FALSE)
 
 # When applying FWL, the first vector of explanatory variables (#X_1) will only contain the variable female
 
 
 # First, perform the regression without the FWL method to know which results should we expect from the FWL process since outcomes are the same
 results <- lm(log(y_salary_m_hu) ~ sex + poly(age,2, raw = TRUE) + cuentaPropia + formal + hoursWorkUsual + maxEducLevel.f + oficio.f, data = bd)
-stargazer(results, type = "text")
 
 bd<- bd %>% mutate(leverage = hatvalues(results))
 bd<- bd %>% mutate(residuals= results$residuals)
 
-ggplot(bd , aes(y = leverage , x = residuals  )) +
+leverage <- ggplot(bd , aes(y = leverage , x = residuals  )) +
   geom_point() + # add points
   theme_bw() + #black and white theme
   labs(x = "Residuales",  
        y = "Leverage",
        title = "") # labels
+ggsave("C:/Users/marti/OneDrive/Documentos/GIT_Repositories/BDML_2024/views/gender_gap/leverage.pdf", plot = leverage)
+
+
 p <- mean(bd$leverage)
 cutt <- 3*p
 bd_no_leverage <-  bd %>% 
@@ -298,8 +289,7 @@ bd <- bd %>%
 #Step 3 from the FWL process. Regress the residuals from step 2 as the result variable against the residuals from step 1.
 
 reg_res <- lm(log_salaryResidControls ~ femaleResidControls, data = bd)
-stargazer(results, reg_res,type="text",digits=7)
-summary_table <- stargazer(results, results_no_leverage, reg_res,type="text",digits=4)
+summary_table <- stargazer(results, results_no_leverage, reg_res,type="latex",digits=4)
 
 #Verificar que la suma de residuales de igual
 sum(resid(results)^2)
@@ -307,8 +297,11 @@ sum(resid(reg_res)^2)
 
 # b) Part ii. Using FWL with bootstrap
 
+
 B <- 1000
 eta_mod1 <- rep(0,1000)
+
+#Run the two previous lines before the loop
 
 for(i in 1:B){
   
@@ -341,17 +334,13 @@ summary_df <- data.frame(Length = length_eta,
 # Print the data frame
 print(summary_df)
 
-hist(eta_mod1, 
-     main = "Distribucion de la estimación",
-     xlab = "Valores",
-     ylab = "Frecuencia",
-     col = "skyblue",
-     border = "black")
+histogram <- ggplot(data = data.frame(x = eta_mod1), aes(x = eta_mod1)) +
+  geom_histogram(fill="#0099F8") +
+  labs(x="Valores", y="Frecuencia") +
+  theme_bw()
+# Save the plot to a specific path
+ggsave("C:/Users/marti/OneDrive/Documentos/GIT_Repositories/BDML_2024/views/gender_gap/histogram.pdf", plot = histogram)
 
-
-distribution_summary <- xtable(summary_df, digits = 7)
-# Print the LaTeX code
-print(distribution_summary, include.rownames = FALSE)
 
 # c) Ploting the age-wage profile
 
@@ -362,9 +351,9 @@ age_range <- seq(min(bd$age), max(bd$age), by = 1)
 conditions <- data.frame(
   sex = rep(c(0, 1), each = length(age_range)),  # Valores para sexo (0 y 1), cada uno repetido para cada edad
   age = rep(age_range, 2),                        # Cada edad repetida dos veces, una para cada sexo
-  cuentaPropia = median(bd$cuentaPropia),         # Valor medio de cuentaPropia
-  formal = median(bd$formal),                    # Valor medio de formal
-  hoursWorkUsual = median(bd$hoursWorkUsual),     # Valor medio de hoursWorkUsual
+  cuentaPropia = median(bd$cuentaPropia),         # Valor medio de cuentaPropia. Es igual a no cuenta propia
+  formal = median(bd$formal),                    # Valor medio de formal. Es igual a formal
+  hoursWorkUsual = median(bd$hoursWorkUsual),     # Valor medio de hoursWorkUsual. Igual a 48
   maxEducLevel.f = 6,                            # Valor fijo para maxEducLevel.f
   oficio.f = 45                                  # Valor fijo para oficio.f
 )
@@ -383,6 +372,9 @@ conditions$oficio.f <- factor(conditions$oficio.f, levels = oficio_levels)
 pred_male <- predict(results, newdata = conditions[conditions$sex == 0,], interval = "confidence")
 pred_female <- predict(results, newdata = conditions[conditions$sex == 1,], interval = "confidence")
 
+# Open a PDF device to save the plot
+pdf("C:/Users/marti/OneDrive/Documentos/GIT_Repositories/BDML_2024/views/gender_gap/ambulantes.pdf")
+
 # Extract upper and lower confidence limits
 lower_male <- pred_male[, "lwr"]
 upper_male <- pred_male[, "upr"]
@@ -390,7 +382,7 @@ lower_female <- pred_female[, "lwr"]
 upper_female <- pred_female[, "upr"]
 
 # Plot the scatter plot with confidence intervals
-plot(bd$age, log(bd$y_salary_m_hu), col = 'blue', xlab = 'Edad', ylab = 'Log Salario', pch = NA, ylim = c(8,9))
+plot(bd$age, log(bd$y_salary_m_hu), col = 'blue', xlab = 'Edad', ylab = 'Log Salario', pch = NA, ylim = c(8.1,9.1))
 lines(age_range, pred_male[, "fit"], col = 'red', lwd = 2)  # Regression line for males
 lines(age_range, pred_female[, "fit"], col = 'green', lwd = 2)  # Regression line for females
 lines(age_range, upper_male, col = 'red', lty = 2)  # Upper confidence interval for males
@@ -402,6 +394,7 @@ lines(age_range, lower_female, col = 'green', lty = 2)  # Lower confidence inter
 legend('topright', legend = c(NA, 'Línea de Regresión para Hombres', 'Línea de Regresión para Mujeres', 'Intervalo de Confianza para Hombres', 'Intervalo de Confianza para Mujeres'), 
        col = c('blue', 'red', 'green', 'red', 'green'), lty = c(NA, 1, 1, 2, 2), lwd = c(NA, 2, 2, 1, 1))
 
+dev.off()
 
 #Ahora asumiendo, por ejemplo, que se trata de ejecutivos con alto logro educativo
 
@@ -428,6 +421,9 @@ conditions$oficio.f <- factor(conditions$oficio.f, levels = oficio_levels)
 pred_male <- predict(results, newdata = conditions[conditions$sex == 0,], interval = "confidence")
 pred_female <- predict(results, newdata = conditions[conditions$sex == 1,], interval = "confidence")
 
+# Open a PDF device to save the plot
+pdf("C:/Users/marti/OneDrive/Documentos/GIT_Repositories/BDML_2024/views/gender_gap/ejecutivos.pdf")
+
 # Extract upper and lower confidence limits
 lower_male <- pred_male[, "lwr"]
 upper_male <- pred_male[, "upr"]
@@ -435,7 +431,7 @@ lower_female <- pred_female[, "lwr"]
 upper_female <- pred_female[, "upr"]
 
 # Plot the scatter plot with confidence intervals
-plot(bd$age, log(bd$y_salary_m_hu), col = 'blue', xlab = 'Edad', ylab = 'Log Salario', pch = NA, ylim = c(8.8,10))
+plot(bd$age, log(bd$y_salary_m_hu), col = 'blue', xlab = 'Edad', ylab = 'Log Salario', pch = NA, ylim = c(9.2,10.3))
 lines(age_range, pred_male[, "fit"], col = 'red', lwd = 2)  # Regression line for males
 lines(age_range, pred_female[, "fit"], col = 'green', lwd = 2)  # Regression line for females
 lines(age_range, upper_male, col = 'red', lty = 2)  # Upper confidence interval for males
@@ -446,6 +442,8 @@ lines(age_range, lower_female, col = 'green', lty = 2)  # Lower confidence inter
 # Add legend (ignoring the label for 'Salarios Reales')
 legend('topright', legend = c(NA, 'Línea de Regresión para Hombres', 'Línea de Regresión para Mujeres', 'Intervalo de Confianza para Hombres', 'Intervalo de Confianza para Mujeres'), 
        col = c('blue', 'red', 'green', 'red', 'green'), lty = c(NA, 1, 1, 2, 2), lwd = c(NA, 2, 2, 1, 1))
+
+dev.off()
 
 #Ahora asumiendo, por ejemplo, que se trata de docentes con alto logro educativo
 
@@ -472,6 +470,9 @@ conditions$oficio.f <- factor(conditions$oficio.f, levels = oficio_levels)
 pred_male <- predict(results, newdata = conditions[conditions$sex == 0,], interval = "confidence")
 pred_female <- predict(results, newdata = conditions[conditions$sex == 1,], interval = "confidence")
 
+# Open a PDF device to save the plot
+pdf("C:/Users/marti/OneDrive/Documentos/GIT_Repositories/BDML_2024/views/gender_gap/docentes.pdf")
+
 # Extract upper and lower confidence limits
 lower_male <- pred_male[, "lwr"]
 upper_male <- pred_male[, "upr"]
@@ -479,7 +480,7 @@ lower_female <- pred_female[, "lwr"]
 upper_female <- pred_female[, "upr"]
 
 # Plot the scatter plot with confidence intervals
-plot(bd$age, log(bd$y_salary_m_hu), col = 'blue', xlab = 'Edad', ylab = 'Log Salario', pch = NA, ylim = c(8.6,9.8))
+plot(bd$age, log(bd$y_salary_m_hu), col = 'blue', xlab = 'Edad', ylab = 'Log Salario', pch = NA, ylim = c(8.8,10))
 lines(age_range, pred_male[, "fit"], col = 'red', lwd = 2)  # Regression line for males
 lines(age_range, pred_female[, "fit"], col = 'green', lwd = 2)  # Regression line for females
 lines(age_range, upper_male, col = 'red', lty = 2)  # Upper confidence interval for males
@@ -490,6 +491,8 @@ lines(age_range, lower_female, col = 'green', lty = 2)  # Lower confidence inter
 # Add legend (ignoring the label for 'Salarios Reales')
 legend('topright', legend = c(NA, 'Línea de Regresión para Hombres', 'Línea de Regresión para Mujeres', 'Intervalo de Confianza para Hombres', 'Intervalo de Confianza para Mujeres'), 
        col = c('blue', 'red', 'green', 'red', 'green'), lty = c(NA, 1, 1, 2, 2), lwd = c(NA, 2, 2, 1, 1))
+
+dev.off()
 
 #Ahora asumiendo, por ejemplo, que se trata de agricultores sin logro educativo
 
@@ -519,6 +522,9 @@ conditions$oficio.f <- factor(conditions$oficio.f, levels = oficio_levels)
 pred_male <- predict(results, newdata = conditions[conditions$sex == 0,], interval = "confidence")
 pred_female <- predict(results, newdata = conditions[conditions$sex == 1,], interval = "confidence")
 
+# Open a PDF device to save the plot
+pdf("C:/Users/marti/OneDrive/Documentos/GIT_Repositories/BDML_2024/views/gender_gap/agricultores.pdf")
+
 # Extract upper and lower confidence limits
 lower_male <- pred_male[, "lwr"]
 upper_male <- pred_male[, "upr"]
@@ -538,7 +544,7 @@ lines(age_range, lower_female, col = 'green', lty = 2)  # Lower confidence inter
 legend('topright', legend = c(NA, 'Línea de Regresión para Hombres', 'Línea de Regresión para Mujeres', 'Intervalo de Confianza para Hombres', 'Intervalo de Confianza para Mujeres'), 
        col = c('blue', 'red', 'green', 'red', 'green'), lty = c(NA, 1, 1, 2, 2), lwd = c(NA, 2, 2, 1, 1))
 
-
+dev.off()
 
 # 5: Predicting earnings------------------------------------
 
