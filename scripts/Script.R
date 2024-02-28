@@ -141,7 +141,7 @@ names(bd)
 ##Summary of all variables
 des_vars <- c("age", "sex", "hoursWorkUsual", "formal", "cuentaPropia")
 stargazer::stargazer(as.data.frame(bd[,des_vars]), type="latex", title="Descriptivas de las variables explicatorias",
-                     out="C:/Users/Maria.Arias/OneDrive - Universidad de los andes/MSc Economics/Big Data & Machine Learning/Problem set 1/BDML_2024/views/descriptive/descriptivas_numericas.tex")
+                     out="./views/descriptive/descriptivas_numericas.tex")
 
 ## Graph to describe "maxEducLevel", "estrato1"
 bd$maxEducLevel <- factor(bd$maxEducLevel, levels = c(1,2,3,4,5,6,7,9), 
@@ -154,14 +154,14 @@ des_2 <- ggplot(bd, aes(x=maxEducLevel)) +
          y= "Cantidad") + 
   theme_bw() ## Esta distribución parecería atípica, pero como nuestra muestra sólo contiene 
             ## personas ocupadas, puede que tenga sentido. Completar con estadísticas laborales en documento.
-ggsave("C:/Users/Maria.Arias/OneDrive - Universidad de los andes/MSc Economics/Big Data & Machine Learning/Problem set 1/BDML_2024/views/descriptive/descriptiva_maxEduc.pdf", des_2)
+ggsave("./views/descriptive/descriptiva_maxEduc.pdf", des_2)
 
 des_3 <- ggplot(bd, aes(x=as.factor(estrato1))) + 
   geom_bar(fill="#0099F8") +
   labs(x="Estrato de energía",
        y= "Cantidad") + 
   theme_bw()
-ggsave("C:/Users/Maria.Arias/OneDrive - Universidad de los andes/MSc Economics/Big Data & Machine Learning/Problem set 1/BDML_2024/views/descriptive/descriptiva_estrato.pdf", des_3)
+ggsave("./views/descriptive/descriptiva_estrato.pdf", des_3)
 
 
 ## Graph of why to transform wage to ln(wage)
@@ -170,7 +170,7 @@ des_4 <- ggplot(bd, aes(x=ln_wage)) +
   geom_histogram(fill="#0099F8") +
   labs(x="ln(salario horario)", y="Frecuencia") +
   theme_bw()
-ggsave("C:/Users/Maria.Arias/OneDrive - Universidad de los andes/MSc Economics/Big Data & Machine Learning/Problem set 1/BDML_2024/views/descriptive/descriptiva_ln_salario.pdf", des_4)
+ggsave("./views/descriptiva_ln_salario.pdf", des_4)
 
 ## Graph of age vs wage
 bd$sex <- factor(bd$sex, levels=c(0,1), labels = c("Mujer", "Hombre"))
@@ -179,7 +179,7 @@ des_5 <- ggplot(bd) +
   geom_smooth(mapping = aes(x=age, y=ln_wage)) +
   labs(x="Edad", y="ln(salario horario)") + 
   theme_bw()
-ggsave("C:/Users/Maria.Arias/OneDrive - Universidad de los andes/MSc Economics/Big Data & Machine Learning/Problem set 1/BDML_2024/views/descriptive/descriptiva_salario_predictores.pdf", des_5)
+ggsave("./views/descriptive/descriptiva_salario_predictores.pdf", des_5)
 
 
 
@@ -189,7 +189,7 @@ ggsave("C:/Users/Maria.Arias/OneDrive - Universidad de los andes/MSc Economics/B
 # Creo que no es y_ingLab_m sino y_salary_m_hu (o y_ingLab_m_ha), deberiamos ponernos de acuerdo
 modelo_punto_3 <- lm(log(y_salary_m_hu) ~ age + I(age^2), data = bd)
 
-stargazer(modelo_punto_3, title="Regresión de salario contra edad", type="latex", out="regresion_punto_3.tex")
+stargazer(modelo_punto_3, title="Regresión de salario contra edad", type="latex", out="./document/regresion_punto_3.tex")
 stargazer(modelo_punto_3, title="Regresión de salario contra edad - texto", type="text")
 
 # Funcion del "peak-age"
@@ -262,7 +262,7 @@ leverage <- ggplot(bd , aes(y = leverage , x = residuals  )) +
   labs(x = "Residuales",  
        y = "Leverage",
        title = "") # labels
-ggsave("C:/Users/marti/OneDrive/Documentos/GIT_Repositories/BDML_2024/views/gender_gap/leverage.pdf", plot = leverage)
+ggsave("./views/gender_gap/leverage.pdf", plot = leverage)
 
 
 p <- mean(bd$leverage)
@@ -339,7 +339,7 @@ histogram <- ggplot(data = data.frame(x = eta_mod1), aes(x = eta_mod1)) +
   labs(x="Valores", y="Frecuencia") +
   theme_bw()
 # Save the plot to a specific path
-ggsave("C:/Users/marti/OneDrive/Documentos/GIT_Repositories/BDML_2024/views/gender_gap/histogram.pdf", plot = histogram)
+ggsave("./views/gender_gap/histogram.pdf", plot = histogram)
 
 
 # c) Ploting the age-wage profile
@@ -373,7 +373,7 @@ pred_male <- predict(results, newdata = conditions[conditions$sex == 0,], interv
 pred_female <- predict(results, newdata = conditions[conditions$sex == 1,], interval = "confidence")
 
 # Open a PDF device to save the plot
-pdf("C:/Users/marti/OneDrive/Documentos/GIT_Repositories/BDML_2024/views/gender_gap/ambulantes.pdf")
+pdf("./views/gender_gap/ambulantes.pdf")
 
 # Extract upper and lower confidence limits
 lower_male <- pred_male[, "lwr"]
@@ -471,7 +471,7 @@ pred_male <- predict(results, newdata = conditions[conditions$sex == 0,], interv
 pred_female <- predict(results, newdata = conditions[conditions$sex == 1,], interval = "confidence")
 
 # Open a PDF device to save the plot
-pdf("C:/Users/marti/OneDrive/Documentos/GIT_Repositories/BDML_2024/views/gender_gap/docentes.pdf")
+pdf("./views/gender_gap/docentes.pdf")
 
 # Extract upper and lower confidence limits
 lower_male <- pred_male[, "lwr"]
@@ -523,7 +523,7 @@ pred_male <- predict(results, newdata = conditions[conditions$sex == 0,], interv
 pred_female <- predict(results, newdata = conditions[conditions$sex == 1,], interval = "confidence")
 
 # Open a PDF device to save the plot
-pdf("C:/Users/marti/OneDrive/Documentos/GIT_Repositories/BDML_2024/views/gender_gap/agricultores.pdf")
+pdf("./views/gender_gap/agricultores.pdf")
 
 # Extract upper and lower confidence limits
 lower_male <- pred_male[, "lwr"]
@@ -695,7 +695,9 @@ ctrl <- trainControl(
 modelo_loocv1 <- train(form_6,
                   data = bd,
                   method = 'lm', 
-                  trControl= ctrl)
+                  trControl= ctrl,
+                  verboseIter = TRUE,
+                  allowParallel = TRUE)
 
 head(modelo_loocv1$pred)
 
