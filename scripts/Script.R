@@ -82,6 +82,7 @@ vis_miss(bd)
 ## First, we will drop the only observation with missing maxEducLevel
 bd <- bd %>% filter(!is.na(maxEducLevel))
 
+
 ## Now, we will impute the hourly wage
 
 # Distribution of hourly wage
@@ -134,6 +135,10 @@ bd_miss <- bd_miss %>%   mutate(p_missing= n_missing/nobs)
 bd_miss <- bd_miss %>%   arrange(-n_missing)
 bd_miss ## No missings.
 
+# Variable creation
+bd$ln_wage <- log(bd$y_salary_m_hu)
+bd$maxEducLevel.f <- factor(bd$maxEducLevel) #Converts variable to factor
+bd$oficio.f <- factor(bd$oficio) #Converts variable to factor
 
 # 2a: Variables and Descriptive Statistics ------------------------------------
 names(bd)
@@ -165,7 +170,7 @@ ggsave("./views/descriptive/descriptiva_estrato.pdf", des_3)
 
 
 ## Graph of why to transform wage to ln(wage)
-bd$ln_wage <- log(bd$y_salary_m_hu)
+
 des_4 <- ggplot(bd, aes(x=ln_wage)) +
   geom_histogram(fill="#0099F8") +
   labs(x="ln(salario horario)", y="Frecuencia") +
@@ -230,8 +235,8 @@ gap_lm_hourly_ni <- lm(log(y_salary_m_hu)~ sex, data = df_without_imputation)
 
 # b) Part i. Conditional age gap incorporating controls like age, cuentaPropia, formal, hoursWorkUsual, inac, maxEducLevel, oficio
 
-bd$maxEducLevel.f <- factor(bd$maxEducLevel) #Converts variable to factor
-bd$oficio.f <- factor(bd$oficio) #Converts variable to factor
+#bd$maxEducLevel.f <- factor(bd$maxEducLevel) #Converts variable to factor
+#bd$oficio.f <- factor(bd$oficio) #Converts variable to factor
 
 #T-test to look at the relevance of the controls
 control_variables <- setdiff(names(bd), c("sex", "maxEducLevel.f", "oficio.f"))
