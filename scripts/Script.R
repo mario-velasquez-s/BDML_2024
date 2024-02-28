@@ -91,7 +91,7 @@ impu_1 <- ggplot(bd, aes(y_salary_m_hu)) +
   geom_vline(xintercept = mean(bd$y_salary_m_hu, na.rm = TRUE), linetype = "dashed", color = "blue") +
   theme_classic() +
   theme(plot.title = element_text(size = 18))
-#ggsave("C:/Users/Maria.Arias/OneDrive - Universidad de los andes/MSc Economics/Big Data & Machine Learning/Problem set 1/BDML_2024/views/imputation/distri_wage.pdf", impu_1)
+#ggsave("./views/imputation/distri_wage.pdf", impu_1)
 
 #Distribution of hourly wage with the mean by sex
 ggplot(bd) +
@@ -112,13 +112,13 @@ impu_2 <- ggplot(data=bd, mapping = aes(as.factor(estrato1), y_salary_m_hu)) +
   xlab("Estrato") + 
   ylab("Salario horario") +
   theme_bw()
-#ggsave("C:/Users/Maria.Arias/OneDrive - Universidad de los andes/MSc Economics/Big Data & Machine Learning/Problem set 1/BDML_2024/views/imputation/wage_estrato1.pdf", impu_2)
+#ggsave("./views/imputation/wage_estrato1.pdf", impu_2)
 
 ## In addition, the social strata (estrato1) are independent to sex and age.
 estrato_orto <- lm(estrato1 ~ age + as.factor(sex), bd)
 summary(estrato_orto) ## Coeficientes muy cercanos a 0.
 impu_3<-stargazer(estrato_orto, type="latex", title="Relación estrato vs edad y sexo")
-#write(impu_3, file="C:/Users/Maria.Arias/OneDrive - Universidad de los andes/MSc Economics/Big Data & Machine Learning/Problem set 1/BDML_2024/views/imputation/estrato1_age_sex.tex")
+#write(impu_3, file="./estrato1_age_sex.tex")
 
 ## Therefore, we will impute with the mean of hourly wage conditioned to the estrato1
 ## in order to avoid affecting the prediction model.
@@ -262,6 +262,7 @@ leverage <- ggplot(bd , aes(y = leverage , x = residuals  )) +
   labs(x = "Residuales",  
        y = "Leverage",
        title = "") # labels
+dir.create("./views/gender_gap", recursive = TRUE)
 ggsave("./views/gender_gap/leverage.pdf", plot = leverage)
 
 
@@ -548,6 +549,9 @@ dev.off()
 
 # 5: Predicting earnings------------------------------------
 
+bd$maxEducLevel.f <- factor(bd$maxEducLevel)
+bd$oficio.f <- factor(bd$oficio)
+
   # a. Splitting sample 70% training 30% testing 
 
   set.seed(10101)  # Set set for replicability purposes 
@@ -690,14 +694,14 @@ scores_cv
   # d. LOOCV for the two models with the lowest RMSE
 
 ctrl <- trainControl(
-  method = "LOOCV") 
+  method = "LOOCV",
+  verboseIter = TRUE,
+  allowParallel = TRUE) 
 
 modelo_loocv1 <- train(form_6,
                   data = bd,
                   method = 'lm', 
-                  trControl= ctrl,
-                  verboseIter = TRUE,
-                  allowParallel = TRUE)
+                  trControl= ctrl)
 
 head(modelo_loocv1$pred)
 
@@ -708,13 +712,9 @@ score_loocv1<-RMSE(modelo_loocv1$pred$pred, bd$ln_wage)
 modelo_loocv2 <- train(form_7,
                        data = bd,
                        method = 'lm', 
-                       trControl= ctrl)
+                       trControl= ctrl,)
 head(modelo_loocv2$pred)
 
 score_loocv2<-RMSE(modelo_loocv2$pred$pred, bd$ln_wage)
-
-
-
-
 
 
