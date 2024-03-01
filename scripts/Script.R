@@ -704,11 +704,8 @@ scores_cv
 ctrl <- trainControl(
   method = "LOOCV",
   verboseIter = TRUE,
-<<<<<<< Updated upstream
   allowParallel = TRUE) 
-=======
-  allowParallel = TRUE)
->>>>>>> Stashed changes
+
 
 modelo_loocv1 <- train(form_6,
                   data = bd,
