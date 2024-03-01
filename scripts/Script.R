@@ -139,6 +139,7 @@ bd_miss ## No missings.
 bd$ln_wage <- log(bd$y_salary_m_hu)
 bd$maxEducLevel.f <- factor(bd$maxEducLevel) #Converts variable to factor
 bd$oficio.f <- factor(bd$oficio) #Converts variable to factor
+bd$mujer <- 1 - bd$sex #Crear variable con mujer igual a 1"
 
 # 2a: Variables and Descriptive Statistics ------------------------------------
 names(bd)
@@ -224,9 +225,6 @@ abline(v = ci_upper, col = "red", lty = 2)
 # 4: The Gender Earnings GAP -------------------------------------------------
 
 #In the regression, women = 1 so I edit bd so that women = 1 and man = 0
-
-bd$sex <- 1 - bd$sex
-df_without_imputation$sex <- 1 - df_without_imputation$sex
 
 # a) Estimating the unconditional wage gap
 
