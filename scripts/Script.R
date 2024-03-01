@@ -594,7 +594,7 @@ score_cv1<- RMSE(predictions, testing$ln_wage )
 score_cv1 # 10584.75
 
 
-# Model 2 - unconditional wage gap
+# Model 2 - unconditional gender wage gap
 # Training
 form_2<- ln_wage~ sex
 
@@ -607,9 +607,9 @@ predictions <- predict(modelo_cv2, testing)
 score_cv2<- RMSE(predictions, testing$ln_wage )
 score_cv2 # 10584.76
 
-# Model 3 - En este modelo se tiene en cuenta la edad, el sexo, el oficio, el 
-# máximo nivel de educación si eltrabajo es formal o no, si el trabajo es 
-# independiente o no 
+# Model 3 - In this model, age, gender, occupation, highest level of education, 
+# whether the job is formal or not, and whether the job is independent or not are
+# taken into account.
 
 
 
@@ -624,9 +624,9 @@ predictions <- predict(modelo_cv3, testing)
 score_cv3<- RMSE(predictions, testing$ln_wage )
 
 
-# Model 4 - para est emodelo se explora la relación cuadrática que puede haber 
-# entre la edad y los ingresos y el tiempo de duración en el trabajo actual y no 
-# tomamos en cuenta si es formal y si trabaja por cuenta propia
+# Model 4 - For this model, the quadratic relationship between age and income, 
+# as well as the duration of current job, is explored, without considering 
+# whether it is formal employment or self-employment.
 
 form_4<- ln_wage ~  sex + oficio.f + age + I(age^2) + maxEducLevel.f  + p6426 
 
@@ -640,8 +640,8 @@ predictions <- predict(modelo_cv4, testing)
 score_cv4<- RMSE(predictions, testing$ln_wage )
 
 
-# Model 5 - Se explora un polinomo de grado 3 para la edad, para ver si hay 
-# alguna diferencia interesante con respecto al polinomio de grado 2
+# Model 5 - A third-degree polynomial for age is explored to see if there are 
+# any interesting differences compared to the second-degree polynomial.
 
 form_5<- ln_wage ~  sex + oficio.f + age + I(age^2) + I(age^3) + maxEducLevel.f 
 
@@ -654,9 +654,9 @@ predictions <- predict(modelo_cv5, testing)
 
 score_cv5<- RMSE(predictions, testing$ln_wage )
 
-# Model 6 - Se explora la posible interacción entre el tipo de oficio y el sexo, 
-# este modelo está pensado en las existentes brechas que hay en ciertos sectores
-# de remuneración más alta donde dominan los hombres
+# Model 6 - The possible interaction between occupation type and gender is 
+# explored in this model, which is designed to address existing gaps in certain 
+# sectors with higher compensation where men dominate.
 
 form_6<- ln_wage ~  sex + oficio + sex*oficio.f + age + I(age^2) + sex*formal + formal + maxEducLevel.f + p6426  + cuentaPropia
 
@@ -669,8 +669,7 @@ predictions <- predict(modelo_cv6, testing)
 
 score_cv6<- RMSE(predictions, testing$ln_wage )
 
-# Model 7 - Este modelo explora si existe alguna relación entre la edad entre 
-# hombres y mujeres y sus ingresos
+# Model 7 - 
 
 form_7<- ln_wage ~  sex + oficio.f + maxEducLevel.f*sex + age + I(age^2) + formal + maxEducLevel.f + p6426  + cuentaPropia
 
@@ -696,6 +695,11 @@ scores_cv<- data.frame( Model= c(1, 2, 3, 4, 5, 6, 7),
 scores_cv
 # Models 6 and 7 have de lowest RMSE
 
+
+form_8 <- ln_wage ~ sex + poly(age,2, raw = TRUE) + cuentaPropia + formal + hoursWorkUsual + maxEducLevel.f + oficio.f
+modelo_cv8 <- lm(form_8,
+                 data = training)
+score_cv8<- RMSE(predictions, testing$ln_wage )
 
   # c. Comments on results 
 
