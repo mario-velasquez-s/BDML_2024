@@ -574,6 +574,9 @@ testing  <- bd[-inTrain,]
 training <- training %>% filter(oficio!=96) 
 testing <- testing %>% filter(oficio!=96) 
 
+training <- training %>% filter(oficio!=78) 
+testing <- testing %>% filter(oficio!=78) 
+
 
 
 # Model 1 - modelo punto 3
@@ -625,9 +628,9 @@ score_cv3<- RMSE(predictions, testing$ln_wage )
 # entre la edad y los ingresos y el tiempo de duración en el trabajo actual y no 
 # tomamos en cuenta si es formal y si trabaja por cuenta propia
 
-form_4<- ln_wage ~  sex + oficio.f + age + (age^2) + maxEducLevel.f  + p6426 
+form_4<- ln_wage ~  sex + oficio.f + age + I(age^2) + maxEducLevel.f  + p6426 
 
-modelo_cv4 <- lm(form_4,
+modelo_cv4 <- lm(form_4, 
                  data = training)
 
 # Prediction
@@ -640,7 +643,7 @@ score_cv4<- RMSE(predictions, testing$ln_wage )
 # Model 5 - Se explora un polinomo de grado 3 para la edad, para ver si hay 
 # alguna diferencia interesante con respecto al polinomio de grado 2
 
-form_5<- ln_wage ~  sex + oficio.f + age + (age^2) + (age^3) + maxEducLevel.f 
+form_5<- ln_wage ~  sex + oficio.f + age + I(age^2) + I(age^3) + maxEducLevel.f 
 
 modelo_cv5 <- lm(form_5,
                  data = training)
@@ -655,7 +658,7 @@ score_cv5<- RMSE(predictions, testing$ln_wage )
 # este modelo está pensado en las existentes brechas que hay en ciertos sectores
 # de remuneración más alta donde dominan los hombres
 
-form_6<- ln_wage ~  sex + oficio + sex*oficio.f + age + (age^2) + sex*formal + formal + maxEducLevel.f + p6426  + cuentaPropia
+form_6<- ln_wage ~  sex + oficio + sex*oficio.f + age + I(age^2) + sex*formal + formal + maxEducLevel.f + p6426  + cuentaPropia
 
 modelo_cv6 <- lm(form_6,
                  data = training)
@@ -669,7 +672,7 @@ score_cv6<- RMSE(predictions, testing$ln_wage )
 # Model 7 - Este modelo explora si existe alguna relación entre la edad entre 
 # hombres y mujeres y sus ingresos
 
-form_7<- ln_wage ~  sex + oficio.f + maxEducLevel.f*sex + age + (age^2) + formal + maxEducLevel.f + p6426  + cuentaPropia
+form_7<- ln_wage ~  sex + oficio.f + maxEducLevel.f*sex + age + I(age^2) + formal + maxEducLevel.f + p6426  + cuentaPropia
 
 modelo_cv7 <- lm(form_7,
                  data = training)
@@ -701,7 +704,11 @@ scores_cv
 ctrl <- trainControl(
   method = "LOOCV",
   verboseIter = TRUE,
+<<<<<<< Updated upstream
   allowParallel = TRUE) 
+=======
+  allowParallel = TRUE)
+>>>>>>> Stashed changes
 
 modelo_loocv1 <- train(form_6,
                   data = bd,
@@ -711,8 +718,7 @@ modelo_loocv1 <- train(form_6,
 head(modelo_loocv1$pred)
 
 score_loocv1<-RMSE(modelo_loocv1$pred$pred, bd$ln_wage)
-
-
+# 0.4923283
 
 modelo_loocv2 <- train(form_7,
                        data = bd,
@@ -721,5 +727,5 @@ modelo_loocv2 <- train(form_7,
 head(modelo_loocv2$pred)
 
 score_loocv2<-RMSE(modelo_loocv2$pred$pred, bd$ln_wage)
-
+# 0.4907426
 
