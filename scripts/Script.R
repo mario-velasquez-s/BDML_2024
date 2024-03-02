@@ -193,14 +193,16 @@ ggsave("./views/descriptive/descriptiva_salario_predictores.pdf", des_5)
 
 
 # 3: Age-wage Profile --------------------------------------------------------
+options(digits = 10)
+set.seed(999)
 
-# Creo que no es y_ingLab_m sino y_salary_m_hu (o y_ingLab_m_ha), deberiamos ponernos de acuerdo
 modelo_punto_3 <- lm(log(y_salary_m_hu) ~ age + I(age^2), data = bd)
+summary(modelo_punto_3)
 
 stargazer(modelo_punto_3, title="Regresión de salario contra edad", type="latex", out="./document/regresion_punto_3.tex")
 stargazer(modelo_punto_3, title="Regresión de salario contra edad - texto", type="text")
 
-# Funcion del "peak-age"
+# "peak-age" function
 bootstrap_peak_age <- function(bd, indices) {
   sampled_data <- bd[indices, ]
   modelo_boot <- lm(log(y_salary_m_hu) ~ age + I(age^2), data = sampled_data)
@@ -211,7 +213,6 @@ bootstrap_peak_age <- function(bd, indices) {
 }
 
 bootstrap_peak_age_results <- boot(bd, bootstrap_peak_age, R = 5000)
-
 
 hist(bootstrap_peak_age_results$t, main = "Distribucion de 'Peak Age'", xlab = "Peak Age", ylab = "Frecuencia", col = "lightblue", border = "black", breaks=25)
 
@@ -226,21 +227,23 @@ abline(v = ci_upper, col = "red", lty = 2)
 
 # 4: The Gender Earnings GAP -------------------------------------------------
 
-#In the regression, women = 1 so I edit bd so that women = 1 and man = 0
-
 # a) Estimating the unconditional wage gap
 
-
+# Perform linear regression to estimate the unconditional wage gap based on gender
 gap_lm_hourly <- lm(ln_wage ~ mujer, data = bd)
 gap_lm_hourly_ni <- lm(log(y_salary_m_hu) ~ mujer, data = df_without_imputation)
-stargazer(gap_lm_hourly, gap_lm_hourly_ni)
+
+# Output regression results in LaTeX format
+stargazer(gap_lm_hourly, gap_lm_hourly_ni, type = "latex", title="Estimacion de la brecha salarial por género",
+          out="./views/gender_gap/brecha_genero.tex")
 
 # b) Part i. Conditional age gap incorporating controls like age, cuentaPropia, formal, hoursWorkUsual, inac, maxEducLevel, oficio
 
-#bd$maxEducLevel.f <- factor(bd$maxEducLevel) #Converts variable to factor
-#bd$oficio.f <- factor(bd$oficio) #Converts variable to factor
+# Convert variables to factors
+bd$maxEducLevel.f <- factor(bd$maxEducLevel) #Converts variable to factor
+bd$oficio.f <- factor(bd$oficio) #Converts variable to factor
 
-#T-test to look at the relevance of the controls
+# Perform regression without FWL method to understand expected results
 control_variables <- setdiff(names(bd), c("sex", "mujer", "maxEducLevel.f", "oficio.f"))
 t_test_results <- data.frame(variable = character(), p_value = numeric(), stringsAsFactors = FALSE)
 for (var in control_variables) {
@@ -248,140 +251,190 @@ for (var in control_variables) {
   t_test_results <- rbind(t_test_results, data.frame(variable = var, p_value = t_test_result$p.value))
 }
 
+# Print t-test results
 print(t_test_results)
+# Print the LaTeX code for the table
+xtable(t_test_results)
 
-latex_table <- xtable(t_test_results)
-# Print the LaTeX code
-print(latex_table, include.rownames = FALSE)
+# When applying FWL, the first vector of explanatory variables (#X_1) will contain the variable mujer, mujer*age, and mujer*age^2
 
-# When applying FWL, the first vector of explanatory variables (#X_1) will only contain the variable female
-
-
-# First, perform the regression without the FWL method to know which results should we expect from the FWL process since outcomes are the same
-results <- lm(log(y_salary_m_hu) ~ sex + poly(age,2, raw = TRUE) + cuentaPropia + formal + hoursWorkUsual + maxEducLevel.f + oficio.f, data = bd)
-
+# Perform regression without FWL method to understand expected results
+results <- lm(log(y_salary_m_hu) ~ mujer + mujer*age + mujer*I(age^2) + cuentaPropia + formal + hoursWorkUsual + maxEducLevel.f + oficio.f, data = bd)
 bd<- bd %>% mutate(leverage = hatvalues(results))
 bd<- bd %>% mutate(residuals= results$residuals)
 
+# Visualize leverage versus residuals
 leverage <- ggplot(bd , aes(y = leverage , x = residuals  )) +
   geom_point() + # add points
   theme_bw() + #black and white theme
   labs(x = "Residuales",  
        y = "Leverage",
        title = "") # labels
-dir.create("./views/gender_gap", recursive = TRUE)
+# Create directory for saving plots
+
+# Save the plot
 ggsave("./views/gender_gap/leverage.pdf", plot = leverage)
 
-
+# Calculate mean leverage
 p <- mean(bd$leverage)
+# Set cutoff for leverage
 cutt <- 3*p
+# Filter observations with leverage less than or equal to the cutoff
 bd_no_leverage <-  bd %>% 
   dplyr:: filter(leverage<= cutt)
 
-results_no_leverage <- lm(log(y_salary_m_hu) ~ sex + poly(age,2, raw = TRUE) + cuentaPropia + formal + hoursWorkUsual + maxEducLevel.f + oficio.f, data = bd_no_leverage)
+# Perform regression without influential observations
+results_no_leverage <- lm(log(y_salary_m_hu) ~ mujer + mujer*age + mujer*I(age^2) + cuentaPropia + formal + hoursWorkUsual + maxEducLevel.f + oficio.f, data = bd_no_leverage)
 
-
-#Step 1 from the FWL process. Regress all the X_2 variables against X_1 (sex)
+# Step 1 from the FWL process. Regress all the X_2 variables against X_1
+bd <- bd %>%
+  mutate(resids_1 = lm(mujer ~ age + I(age^2) + cuentaPropia + formal + hoursWorkUsual + maxEducLevel.f + oficio.f, data = .)$residuals)
 
 bd <- bd %>%
-  mutate(femaleResidControls = lm(sex ~ poly(age,2, raw = TRUE) + cuentaPropia + formal + hoursWorkUsual + maxEducLevel.f + oficio.f, data = .)$residuals)
-
-
-#Setp 2 from the FWL process. Regress the outcome variable against the X_2 variables.
+  mutate(resids_2 = lm(mujer*age ~ age + I(age^2) + cuentaPropia + formal + hoursWorkUsual + maxEducLevel.f + oficio.f, data = .)$residuals)
 
 bd <- bd %>%
-  mutate(log_salaryResidControls = lm(log(y_salary_m_hu) ~ poly(age,2, raw = TRUE) + cuentaPropia + formal + 
-                                        hoursWorkUsual + maxEducLevel.f + oficio.f, 
+  mutate(resids_3 = lm(mujer*I(age^2) ~ age + I(age^2) + cuentaPropia + formal + hoursWorkUsual + maxEducLevel.f + oficio.f, data = .)$residuals)
+
+
+# Step 2 from the FWL process. Regress the outcome variable against the X_2 variables.
+
+bd <- bd %>%
+  mutate(log_salaryResidControls = lm(log(y_salary_m_hu) ~ age + I(age^2) + cuentaPropia + formal + hoursWorkUsual + maxEducLevel.f + oficio.f, 
                                       data = .)$residuals)
 
 #Step 3 from the FWL process. Regress the residuals from step 2 as the result variable against the residuals from step 1.
 
-reg_res <- lm(log_salaryResidControls ~ femaleResidControls, data = bd)
-summary_table <- stargazer(results, results_no_leverage, reg_res,type="latex",digits=4)
+reg_res <- lm(log_salaryResidControls ~ resids_1 + resids_2 + resids_3, data = bd)
 
-#Verificar que la suma de residuales de igual
-sum(resid(results)^2)
-sum(resid(reg_res)^2)
+#Output regression results in text format
+summary_table <- stargazer(results, results_no_leverage, reg_res,type="latex",digits=4, title="Resultados de las regresiones",
+                           out="./views/descriptive/regresiones_con_controles.tex")
 
 # b) Part ii. Using FWL with bootstrap
 
-
+# Set the number of iterations for the bootstrap procedure
 B <- 1000
-eta_mod1 <- rep(0,1000)
 
-#Run the two previous lines before the loop
+# Initialize vectors to store bootstrap estimates
+eta_mod2 <- rep(0,B)
+eta_mod3 <- rep(0,B)
+eta_mod4 <- rep(0,B)
 
+# Loop for bootstrap procedure (may need to run twice)
 for(i in 1:B){
-  
+  # Sample with replacement from the original dataset
   bd_sample<- sample_frac(bd,size=1,replace=TRUE) #takes a sample with replacement of the same size of the original sample (1 or 100%)
   
+  # Perform regression on the bootstrap sample and save residuals
   bd <- bd %>%
-    mutate(reg_1_bootstrap = lm(sex ~ poly(age,2, raw = TRUE) + cuentaPropia + formal + hoursWorkUsual + maxEducLevel.f + oficio.f, data = bd_sample)$residuals)
+    mutate(reg_1_bootstrap = lm(mujer ~ age + I(age^2) + cuentaPropia + formal + hoursWorkUsual + maxEducLevel.f + oficio.f, data = .)$residuals)
   
   bd <- bd %>%
-    mutate(reg_2_bootstrap = lm(log(y_salary_m_hu) ~ poly(age,2, raw = TRUE) + cuentaPropia + formal + 
-                                  hoursWorkUsual + maxEducLevel.f + oficio.f, 
-                                data = bd_sample)$residuals)
+    mutate(reg_2_bootstrap = lm(mujer*age ~ age + I(age^2) + cuentaPropia + formal + hoursWorkUsual + maxEducLevel.f + oficio.f, data = .)$residuals)
   
-  reg_3_bootstrap <- lm(reg_2_bootstrap ~ reg_1_bootstrap, data = bd_sample)
+  bd <- bd %>%
+    mutate(reg_3_bootstrap = lm(mujer*I(age^2) ~ age + I(age^2) + cuentaPropia + formal + hoursWorkUsual + maxEducLevel.f + oficio.f, data = .)$residuals)
   
-  coefs<-reg_3_bootstrap$coefficients[2] # gets the coefficient of interest that coincides with the elasticity of demand
+  # Step 2 from the FWL process. Regress the outcome variable against the X_2 variables.
   
-  eta_mod1[i]<-coefs #saves it in the above vector
+  bd <- bd %>%
+    mutate(reg_4_bootstrap = lm(log(y_salary_m_hu) ~ age + I(age^2) + cuentaPropia + formal + hoursWorkUsual + maxEducLevel.f + oficio.f, 
+                                        data = .)$residuals)
+
+  # Fit regression model on the bootstrap sample using FWL residuals
+  reg_3_bootstrap <- lm(reg_4_bootstrap ~ reg_1_bootstrap + reg_2_bootstrap + reg_3_bootstrap, data = bd_sample)
+  
+  # Extract coefficients from the bootstrap regression model
+  coefs_2 <-reg_3_bootstrap$coefficients[2]
+  coefs_3 <-reg_3_bootstrap$coefficients[3]
+  coefs_4 <-reg_3_bootstrap$coefficients[4]
+  
+  # Save coefficients in respective vectors
+  eta_mod2[i]<-coefs_2 #saves it in the above vector
+  eta_mod3[i]<-coefs_3
+  eta_mod4[i]<-coefs_4
 }
 
-length_eta <- length(eta_mod1)
-mean_eta <- mean(eta_mod1)
-std_dev_eta <- sd(eta_mod1)
+# Calculate mean and standard deviation for eta_mod2, eta_mod3, and eta_mod4
+mean_eta_mod2 <- mean(eta_mod2)
+sd_eta_mod2 <- sd(eta_mod2)
+mean_eta_mod3 <- mean(eta_mod3)
+sd_eta_mod3 <- sd(eta_mod3)
+mean_eta_mod4 <- mean(eta_mod4)
+sd_eta_mod4 <- sd(eta_mod4)
 
-# Create data frame
-summary_df <- data.frame(Length = length_eta,
-                         Mean = mean_eta,
-                         Std_Dev = std_dev_eta)
+# Create a data frame to store the summary statistics
+summary_table <- data.frame(
+  Parameter = c("eta_mod2", "eta_mod2", "eta_mod3", "eta_mod3", "eta_mod4", "eta_mod4"),
+  Statistic = c("Mean", "Standard Deviation", "Mean", "Standard Deviation", "Mean", "Standard Deviation"),
+  Value = c(mean_eta_mod2, sd_eta_mod2, mean_eta_mod3, sd_eta_mod3, mean_eta_mod4, sd_eta_mod4)
+)
 
-# Print the data frame
-print(summary_df)
+# Print the summary table
+print(summary_table)
+xtable(summary_table)
 
-histogram <- ggplot(data = data.frame(x = eta_mod1), aes(x = eta_mod1)) +
+
+
+# Create histogram plot for eta_mod2 (mujer)
+histogram_1 <- ggplot(data = data.frame(x = eta_mod2), aes(x = eta_mod2)) +
   geom_histogram(fill="#0099F8") +
   labs(x="Valores", y="Frecuencia") +
   theme_bw()
 # Save the plot to a specific path
-ggsave("./views/gender_gap/histogram.pdf", plot = histogram)
+ggsave("./views/gender_gap/hist_mujer.pdf", histogram_1)
+
+# Create histogram plot for eta_mod2 (mujer*age)
+histogram_2 <- ggplot(data = data.frame(x = eta_mod3), aes(x = eta_mod3)) +
+  geom_histogram(fill="#0099F8") +
+  labs(x="Valores", y="Frecuencia") +
+  theme_bw()
+# Save the plot to a specific path
+ggsave("./views/gender_gap/hist_mujerage.pdf", plot = histogram_2)
+
+# Create histogram plot for eta_mod2 (mujer*age^2)
+histogram_3 <- ggplot(data = data.frame(x = eta_mod4), aes(x = eta_mod4)) +
+  geom_histogram(fill="#0099F8") +
+  labs(x="Valores", y="Frecuencia") +
+  theme_bw()
+# Save the plot to a specific path
+ggsave("./views/gender_gap/hist_mujerage2.pdf", plot = histogram_3)
+
 
 
 # c) Ploting the age-wage profile
 
-# Genera un rango de edades desde la mínima a la máxima encontrada en la variable 'age' de 'bd', con incrementos de 1.
+# Generate a range of ages from the minimum to the maximum found in the 'age' variable of 'bd', with increments of 1.
 age_range <- seq(min(bd$age), max(bd$age), by = 1)
 
-# Crea un marco de datos 'conditions' con condiciones para diferentes variables.
+# Create a data frame 'conditions' with conditions for different variables.
 conditions <- data.frame(
-  sex = rep(c(0, 1), each = length(age_range)),  # Valores para sexo (0 y 1), cada uno repetido para cada edad
-  age = rep(age_range, 2),                        # Cada edad repetida dos veces, una para cada sexo
-  cuentaPropia = median(bd$cuentaPropia),         # Valor medio de cuentaPropia. Es igual a no cuenta propia
-  formal = median(bd$formal),                    # Valor medio de formal. Es igual a formal
-  hoursWorkUsual = median(bd$hoursWorkUsual),     # Valor medio de hoursWorkUsual. Igual a 48
-  maxEducLevel.f = 6,                            # Valor fijo para maxEducLevel.f
-  oficio.f = 45                                  # Valor fijo para oficio.f
+  mujer = rep(c(0, 1), each = length(age_range)),  # Values for both sexs (0 y 1), one for each age
+  age = rep(age_range, 2),                        # Each age repetated twice, one for each sex
+  cuentaPropia = median(bd$cuentaPropia),         # Median cuentaPropia. It is equal to 0
+  formal = median(bd$formal),                    # Median of formal. It is equal to 1
+  hoursWorkUsual = median(bd$hoursWorkUsual),     # Median of hoursWorkUsual. Equal to 48
+  maxEducLevel.f = 6,                            # Fixed value for maxEducLevel.f
+  oficio.f = 45                                  # Fixed value for oficio.f
 )
 
-# Define niveles para maxEducLevel.f y oficio.f
+# Define levels for maxEducLevel.f and job.f
 education_levels <- c(1:7, 9)  # Niveles de educación
 oficio_levels <- 1:99          # Niveles para oficio
 
-# Convierte maxEducLevel.f y oficio.f a factores con niveles especificados
+# Convert maxEducLevel.f and job.f to factors with specified levels.
 conditions$maxEducLevel.f <- factor(conditions$maxEducLevel.f, levels = education_levels)
 conditions$oficio.f <- factor(conditions$oficio.f, levels = oficio_levels)
 
-# Realiza predicciones separadas para hombres y mujeres
+# Perform separate predictions for men and women.
 
 # Perform predictions with confidence intervals
-pred_male <- predict(results, newdata = conditions[conditions$sex == 0,], interval = "confidence")
-pred_female <- predict(results, newdata = conditions[conditions$sex == 1,], interval = "confidence")
+pred_male <- predict(results, newdata = conditions[conditions$mujer == 0,], interval = "confidence")
+pred_female <- predict(results, newdata = conditions[conditions$mujer == 1,], interval = "confidence")
 
-# Open a PDF device to save the plot
 pdf("./views/gender_gap/ambulantes.pdf")
+
 
 # Extract upper and lower confidence limits
 lower_male <- pred_male[, "lwr"]
@@ -404,33 +457,33 @@ legend('topright', legend = c(NA, 'Línea de Regresión para Hombres', 'Línea d
 
 dev.off()
 
-#Ahora asumiendo, por ejemplo, que se trata de ejecutivos con alto logro educativo
+#Now assuming, for example, that they are executives with high educational achievement.
 
 conditions <- data.frame(
-  sex = rep(c(0, 1), each = length(age_range)),  # Valores para sexo (0 y 1), cada uno repetido para cada edad
-  age = rep(age_range, 2),                        # Cada edad repetida dos veces, una para cada sexo
-  cuentaPropia = median(bd$cuentaPropia),         # Valor medio de cuentaPropia
-  formal = median(bd$formal),                    # Valor medio de formal
-  hoursWorkUsual = median(bd$hoursWorkUsual),     # Valor medio de hoursWorkUsual
-  maxEducLevel.f = 7,                            # Educación terciaria
-  oficio.f = 21                                  # Ejecutivos o gerentes
+  mujer = rep(c(0, 1), each = length(age_range)),  # Values for gender (0 and 1), each repeated for each age.
+  age = rep(age_range, 2),                        # Each age repeated twice, once for each gender.
+  cuentaPropia = median(bd$cuentaPropia),         # Mean value of selfEmployed.
+  formal = median(bd$formal),                    # Mean value of formal.
+  hoursWorkUsual = median(bd$hoursWorkUsual),     #Mean value of hoursWorkUsual.
+  maxEducLevel.f = 7,                            # Tertiary education
+  oficio.f = 21                                  # Executives or managers
 )
 
-# Define niveles para maxEducLevel.f y oficio.f
+#Define levels for maxEducLevel.f and job.f
 education_levels <- c(1:7, 9)  # Niveles de educación
 oficio_levels <- 1:99          # Niveles para oficio
 
-# Convierte maxEducLevel.f y oficio.f a factores con niveles especificados
+# Convert maxEducLevel.f and job.f to factors with specified levels.
 conditions$maxEducLevel.f <- factor(conditions$maxEducLevel.f, levels = education_levels)
 conditions$oficio.f <- factor(conditions$oficio.f, levels = oficio_levels)
 
 
 # Perform predictions with confidence intervals
-pred_male <- predict(results, newdata = conditions[conditions$sex == 0,], interval = "confidence")
-pred_female <- predict(results, newdata = conditions[conditions$sex == 1,], interval = "confidence")
+pred_male <- predict(results, newdata = conditions[conditions$mujer == 0,], interval = "confidence")
+pred_female <- predict(results, newdata = conditions[conditions$mujer == 1,], interval = "confidence")
 
 # Open a PDF device to save the plot
-pdf("C:/Users/marti/OneDrive/Documentos/GIT_Repositories/BDML_2024/views/gender_gap/ejecutivos.pdf")
+pdf("./views/gender_gap/ejecutivos.pdf")
 
 # Extract upper and lower confidence limits
 lower_male <- pred_male[, "lwr"]
@@ -453,30 +506,30 @@ legend('topright', legend = c(NA, 'Línea de Regresión para Hombres', 'Línea d
 
 dev.off()
 
-#Ahora asumiendo, por ejemplo, que se trata de docentes con alto logro educativo
+#Now assuming, for example, that they are teachers with high educational achievement.
 
 conditions <- data.frame(
-  sex = rep(c(0, 1), each = length(age_range)),  # Valores para sexo (0 y 1), cada uno repetido para cada edad
-  age = rep(age_range, 2),                        # Cada edad repetida dos veces, una para cada sexo
-  cuentaPropia = median(bd$cuentaPropia),         # Valor medio de cuentaPropia
-  formal = median(bd$formal),                    # Valor medio de formal
-  hoursWorkUsual = median(bd$hoursWorkUsual),     # Valor medio de hoursWorkUsual
-  maxEducLevel.f = 7,                            # Educación terciaria
-  oficio.f = 13                                  # Docentes
+  mujer = rep(c(0, 1), each = length(age_range)),  # Values for gender (0 and 1), each repeated for each age.
+  age = rep(age_range, 2),                        # Each age repeated twice, once for each gender.
+  cuentaPropia = median(bd$cuentaPropia),         #  Mean value of selfEmployed.
+  formal = median(bd$formal),                    # Mean value of formal.
+  hoursWorkUsual = median(bd$hoursWorkUsual),     # Mean value of hoursWorkUsual.
+  maxEducLevel.f = 7,                            #Tertiary education
+  oficio.f = 13                                  # Professors
 )
 
-# Define niveles para maxEducLevel.f y oficio.f
+#Define levels for maxEducLevel.f and job.f
 education_levels <- c(1:7, 9)  # Niveles de educación
 oficio_levels <- 1:99          # Niveles para oficio
 
-# Convierte maxEducLevel.f y oficio.f a factores con niveles especificados
+# Convert maxEducLevel.f and job.f to factors with specified levels.
 conditions$maxEducLevel.f <- factor(conditions$maxEducLevel.f, levels = education_levels)
 conditions$oficio.f <- factor(conditions$oficio.f, levels = oficio_levels)
 
 
 # Perform predictions with confidence intervals
-pred_male <- predict(results, newdata = conditions[conditions$sex == 0,], interval = "confidence")
-pred_female <- predict(results, newdata = conditions[conditions$sex == 1,], interval = "confidence")
+pred_male <- predict(results, newdata = conditions[conditions$mujer == 0,], interval = "confidence")
+pred_female <- predict(results, newdata = conditions[conditions$mujer == 1,], interval = "confidence")
 
 # Open a PDF device to save the plot
 pdf("./views/gender_gap/docentes.pdf")
@@ -502,33 +555,30 @@ legend('topright', legend = c(NA, 'Línea de Regresión para Hombres', 'Línea d
 
 dev.off()
 
-#Ahora asumiendo, por ejemplo, que se trata de agricultores sin logro educativo
+#Now assuming, for example, that they are farmers without educational achievement
 
 conditions <- data.frame(
-  sex = rep(c(0, 1), each = length(age_range)),  # Valores para sexo (0 y 1), cada uno repetido para cada edad
-  age = rep(age_range, 2),                        # Cada edad repetida dos veces, una para cada sexo
-  cuentaPropia = median(bd$cuentaPropia),         # Valor medio de cuentaPropia
-  formal = median(bd$formal),                    # Valor medio de formal
-  hoursWorkUsual = median(bd$hoursWorkUsual),     # Valor medio de hoursWorkUsual
-  maxEducLevel.f = 1,                            # Sin logro educativo
-  oficio.f = 61                                  # Agricultores
+  mujer = rep(c(0, 1), each = length(age_range)),  # Values for gender (0 and 1), each repeated for each age.
+  age = rep(age_range, 2),                        # Each age repeated twice, once for each gender.
+  cuentaPropia = median(bd$cuentaPropia),         # Mean value of selfEmployed.
+  formal = median(bd$formal),                    # Mean value of formal.
+  hoursWorkUsual = median(bd$hoursWorkUsual),     #  Mean value of hoursWorkUsual.
+  maxEducLevel.f = 1,                            # No education
+  oficio.f = 61                                  # Farmer
 )
-median(bd$cuentaPropia)
-median(bd$formal)
 
-
-# Define niveles para maxEducLevel.f y oficio.f
+#Define levels for maxEducLevel.f and job.f
 education_levels <- c(1:7, 9)  # Niveles de educación
 oficio_levels <- 1:99          # Niveles para oficio
 
-# Convierte maxEducLevel.f y oficio.f a factores con niveles especificados
+# Convert maxEducLevel.f and job.f to factors with specified levels.
 conditions$maxEducLevel.f <- factor(conditions$maxEducLevel.f, levels = education_levels)
 conditions$oficio.f <- factor(conditions$oficio.f, levels = oficio_levels)
 
 
 # Perform predictions with confidence intervals
-pred_male <- predict(results, newdata = conditions[conditions$sex == 0,], interval = "confidence")
-pred_female <- predict(results, newdata = conditions[conditions$sex == 1,], interval = "confidence")
+pred_male <- predict(results, newdata = conditions[conditions$mujer == 0,], interval = "confidence")
+pred_female <- predict(results, newdata = conditions[conditions$mujer == 1,], interval = "confidence")
 
 # Open a PDF device to save the plot
 pdf("./views/gender_gap/agricultores.pdf")
