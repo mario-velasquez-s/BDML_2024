@@ -782,7 +782,7 @@ modelo_loocv1 <- train(form_6,
 head(modelo_loocv1$pred)
 
 score_loocv1<-RMSE(modelo_loocv1$pred$pred, bd$ln_wage)
-# 0.4923283
+# 0.4847495
 
 modelo_loocv2 <- train(form_7,
                        data = bd,
@@ -791,5 +791,5 @@ modelo_loocv2 <- train(form_7,
 head(modelo_loocv2$pred)
 
 score_loocv2<-RMSE(modelo_loocv2$pred$pred, bd$ln_wage)
-# 0.4907426
+# 0.484197
 
