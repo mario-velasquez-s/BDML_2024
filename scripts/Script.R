@@ -193,14 +193,16 @@ ggsave("./views/descriptive/descriptiva_salario_predictores.pdf", des_5)
 
 
 # 3: Age-wage Profile --------------------------------------------------------
+options(digits = 10)
+set.seed(999)
 
-# Creo que no es y_ingLab_m sino y_salary_m_hu (o y_ingLab_m_ha), deberiamos ponernos de acuerdo
 modelo_punto_3 <- lm(log(y_salary_m_hu) ~ age + I(age^2), data = bd)
+summary(modelo_punto_3)
 
 stargazer(modelo_punto_3, title="Regresión de salario contra edad", type="latex", out="./document/regresion_punto_3.tex")
 stargazer(modelo_punto_3, title="Regresión de salario contra edad - texto", type="text")
 
-# Funcion del "peak-age"
+# "peak-age" function
 bootstrap_peak_age <- function(bd, indices) {
   sampled_data <- bd[indices, ]
   modelo_boot <- lm(log(y_salary_m_hu) ~ age + I(age^2), data = sampled_data)
@@ -211,7 +213,6 @@ bootstrap_peak_age <- function(bd, indices) {
 }
 
 bootstrap_peak_age_results <- boot(bd, bootstrap_peak_age, R = 5000)
-
 
 hist(bootstrap_peak_age_results$t, main = "Distribucion de 'Peak Age'", xlab = "Peak Age", ylab = "Frecuencia", col = "lightblue", border = "black", breaks=25)
 
