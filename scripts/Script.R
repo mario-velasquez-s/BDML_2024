@@ -250,7 +250,6 @@ for (var in control_variables) {
   t_test_results <- rbind(t_test_results, data.frame(variable = var, p_value = t_test_result$p.value))
 }
 
-R
 
 # a) Estimating the unconditional wage gap
 
@@ -296,7 +295,7 @@ leverage <- ggplot(bd , aes(y = leverage , x = residuals  )) +
        y = "Leverage",
        title = "") # labels
 # Create directory for saving plots
-#dir.create("./views/gender_gap", recursive = TRUE)
+
 # Save the plot
 ggsave("./views/gender_gap/leverage.pdf", plot = leverage)
 
@@ -459,8 +458,8 @@ conditions$oficio.f <- factor(conditions$oficio.f, levels = oficio_levels)
 pred_male <- predict(results, newdata = conditions[conditions$mujer == 0,], interval = "confidence")
 pred_female <- predict(results, newdata = conditions[conditions$mujer == 1,], interval = "confidence")
 
-# Open a PDF device to save the plot
 pdf("./views/gender_gap/ambulantes.pdf")
+
 
 # Extract upper and lower confidence limits
 lower_male <- pred_male[, "lwr"]
@@ -486,7 +485,7 @@ dev.off()
 #Ahora asumiendo, por ejemplo, que se trata de ejecutivos con alto logro educativo
 
 conditions <- data.frame(
-  sex = rep(c(0, 1), each = length(age_range)),  # Valores para sexo (0 y 1), cada uno repetido para cada edad
+  mujer = rep(c(0, 1), each = length(age_range)),  # Valores para sexo (0 y 1), cada uno repetido para cada edad
   age = rep(age_range, 2),                        # Cada edad repetida dos veces, una para cada sexo
   cuentaPropia = median(bd$cuentaPropia),         # Valor medio de cuentaPropia
   formal = median(bd$formal),                    # Valor medio de formal
@@ -505,11 +504,11 @@ conditions$oficio.f <- factor(conditions$oficio.f, levels = oficio_levels)
 
 
 # Perform predictions with confidence intervals
-pred_male <- predict(results, newdata = conditions[conditions$sex == 0,], interval = "confidence")
-pred_female <- predict(results, newdata = conditions[conditions$sex == 1,], interval = "confidence")
+pred_male <- predict(results, newdata = conditions[conditions$mujer == 0,], interval = "confidence")
+pred_female <- predict(results, newdata = conditions[conditions$mujer == 1,], interval = "confidence")
 
 # Open a PDF device to save the plot
-pdf("C:/Users/marti/OneDrive/Documentos/GIT_Repositories/BDML_2024/views/gender_gap/ejecutivos.pdf")
+pdf("./views/gender_gap/ejecutivos.pdf")
 
 # Extract upper and lower confidence limits
 lower_male <- pred_male[, "lwr"]
@@ -535,7 +534,7 @@ dev.off()
 #Ahora asumiendo, por ejemplo, que se trata de docentes con alto logro educativo
 
 conditions <- data.frame(
-  sex = rep(c(0, 1), each = length(age_range)),  # Valores para sexo (0 y 1), cada uno repetido para cada edad
+  mujer = rep(c(0, 1), each = length(age_range)),  # Valores para sexo (0 y 1), cada uno repetido para cada edad
   age = rep(age_range, 2),                        # Cada edad repetida dos veces, una para cada sexo
   cuentaPropia = median(bd$cuentaPropia),         # Valor medio de cuentaPropia
   formal = median(bd$formal),                    # Valor medio de formal
@@ -554,8 +553,8 @@ conditions$oficio.f <- factor(conditions$oficio.f, levels = oficio_levels)
 
 
 # Perform predictions with confidence intervals
-pred_male <- predict(results, newdata = conditions[conditions$sex == 0,], interval = "confidence")
-pred_female <- predict(results, newdata = conditions[conditions$sex == 1,], interval = "confidence")
+pred_male <- predict(results, newdata = conditions[conditions$mujer == 0,], interval = "confidence")
+pred_female <- predict(results, newdata = conditions[conditions$mujer == 1,], interval = "confidence")
 
 # Open a PDF device to save the plot
 pdf("./views/gender_gap/docentes.pdf")
@@ -584,7 +583,7 @@ dev.off()
 #Ahora asumiendo, por ejemplo, que se trata de agricultores sin logro educativo
 
 conditions <- data.frame(
-  sex = rep(c(0, 1), each = length(age_range)),  # Valores para sexo (0 y 1), cada uno repetido para cada edad
+  mujer = rep(c(0, 1), each = length(age_range)),  # Valores para sexo (0 y 1), cada uno repetido para cada edad
   age = rep(age_range, 2),                        # Cada edad repetida dos veces, una para cada sexo
   cuentaPropia = median(bd$cuentaPropia),         # Valor medio de cuentaPropia
   formal = median(bd$formal),                    # Valor medio de formal
@@ -592,9 +591,6 @@ conditions <- data.frame(
   maxEducLevel.f = 1,                            # Sin logro educativo
   oficio.f = 61                                  # Agricultores
 )
-median(bd$cuentaPropia)
-median(bd$formal)
-
 
 # Define niveles para maxEducLevel.f y oficio.f
 education_levels <- c(1:7, 9)  # Niveles de educación
@@ -606,8 +602,8 @@ conditions$oficio.f <- factor(conditions$oficio.f, levels = oficio_levels)
 
 
 # Perform predictions with confidence intervals
-pred_male <- predict(results, newdata = conditions[conditions$sex == 0,], interval = "confidence")
-pred_female <- predict(results, newdata = conditions[conditions$sex == 1,], interval = "confidence")
+pred_male <- predict(results, newdata = conditions[conditions$mujer == 0,], interval = "confidence")
+pred_female <- predict(results, newdata = conditions[conditions$mujer == 1,], interval = "confidence")
 
 # Open a PDF device to save the plot
 pdf("./views/gender_gap/agricultores.pdf")
