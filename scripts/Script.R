@@ -314,7 +314,11 @@ sum(resid(reg_res)^2)
 
 
 B <- 1000
-eta_mod1 <- rep(0,1000)
+eta_mod2 <- rep(0,B)
+eta_mod3 <- rep(0,B)
+eta_mod4 <- rep(0,B)
+eta_mod5 <- rep(0,B)
+eta_mod6 <- rep(0,B)
 
 #Run the two previous lines before the loop
 
@@ -345,29 +349,58 @@ for(i in 1:B){
   
   reg_3_bootstrap <- lm(reg_6_bootstrap ~ reg_1_bootstrap + reg_2_bootstrap + reg_3_bootstrap + reg_4_bootstrap + reg_5_bootstrap, data = bd_sample)
   
-  coefs<-reg_3_bootstrap$coefficients[2:6] # gets the coefficient of interest that coincides with the elasticity of demand
+  coefs_2 <-reg_3_bootstrap$coefficients[2]
+  coefs_3 <-reg_3_bootstrap$coefficients[3]
+  coefs_4 <-reg_3_bootstrap$coefficients[4]
+  coefs_5 <-reg_3_bootstrap$coefficients[5]
+  coefs_6 <-reg_3_bootstrap$coefficients[6]
   
-  eta_mod1[i]<-coefs #saves it in the above vector
+  eta_mod2[i]<-coefs_2 #saves it in the above vector
+  eta_mod3[i]<-coefs_3
+  eta_mod4[i]<-coefs_4
+  eta_mod5[i]<-coefs_5
+  eta_mod6[i]<-coefs_6
 }
 
-length_eta <- length(eta_mod1)
-mean_eta <- mean(eta_mod1)
-std_dev_eta <- sd(eta_mod1)
-
-# Create data frame
-summary_df <- data.frame(Length = length_eta,
-                         Mean = mean_eta,
-                         Std_Dev = std_dev_eta)
 
 # Print the data frame
 print(summary_df)
 
-histogram <- ggplot(data = data.frame(x = eta_mod1), aes(x = eta_mod1)) +
+histogram_1 <- ggplot(data = data.frame(x = eta_mod2), aes(x = eta_mod2)) +
   geom_histogram(fill="#0099F8") +
   labs(x="Valores", y="Frecuencia") +
   theme_bw()
 # Save the plot to a specific path
-ggsave("./views/gender_gap/histogram.pdf", plot = histogram)
+ggsave("./views/boot_mujer/histogram.pdf", histogram_1)
+
+histogram_2 <- ggplot(data = data.frame(x = eta_mod3), aes(x = eta_mod3)) +
+  geom_histogram(fill="#0099F8") +
+  labs(x="Valores", y="Frecuencia") +
+  theme_bw()
+# Save the plot to a specific path
+ggsave("./views/boot_edad/histogram.pdf", plot = histogram_2)
+
+histogram_3 <- ggplot(data = data.frame(x = eta_mod4), aes(x = eta_mod4)) +
+  geom_histogram(fill="#0099F8") +
+  labs(x="Valores", y="Frecuencia") 
+  theme_bw()
+# Save the plot to a specific path
+ggsave("./views/boot_edad2/histogram.pdf", plot = histogram_3)
+
+histogram_4 <- ggplot(data = data.frame(x = eta_mod5), aes(x = eta_mod5)) +
+  geom_histogram(fill="#0099F8") +
+  labs(x="Valores", y="Frecuencia") +
+  theme_bw()
+# Save the plot to a specific path
+ggsave("./views/boot_mujeredad/histogram.pdf", plot = histogram_4)
+
+histogram_5 <- ggplot(data = data.frame(x = eta_mod6), aes(x = eta_mod6)) +
+  geom_histogram(fill="#0099F8") +
+  labs(x="Valores", y="Frecuencia") +
+  theme_bw()
+# Save the plot to a specific path
+ggsave("./views/boot_mujeredad2/histogram.pdf", plot = histogram_5)
+
 
 
 # c) Ploting the age-wage profile
