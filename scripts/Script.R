@@ -251,31 +251,6 @@ for (var in control_variables) {
   t_test_results <- rbind(t_test_results, data.frame(variable = var, p_value = t_test_result$p.value))
 }
 
-
-# a) Estimating the unconditional wage gap
-
-# Perform linear regression to estimate the unconditional wage gap based on gender
-gap_lm_hourly <- lm(ln_wage ~ mujer, data = bd)
-gap_lm_hourly_ni <- lm(log(y_salary_m_hu) ~ mujer, data = df_without_imputation)
-
-# Output regression results in LaTeX format
-stargazer(gap_lm_hourly, gap_lm_hourly_ni, type = "latex", title = "Estimation of Gender Wage Gap",
-          out = "./views/gender_gap/gender_gap.tex")
-
-# b) Part i. Conditional age gap incorporating controls like age, cuentaPropia, formal, hoursWorkUsual, inac, maxEducLevel, oficio
-
-# Convert variables to factors
-bd$maxEducLevel.f <- factor(bd$maxEducLevel)
-bd$oficio.f <- factor(bd$oficio)
-
-# Perform t-tests to examine the relevance of control variables
-control_variables <- setdiff(names(bd), c("sex", "mujer", "maxEducLevel.f", "oficio.f"))
-t_test_results <- data.frame(variable = character(), p_value = numeric(), stringsAsFactors = FALSE)
-for (var in control_variables) {
-  t_test_result <- t.test(bd[bd$sex == 1, var], bd[bd$sex == 0, var])
-  t_test_results <- rbind(t_test_results, data.frame(variable = var, p_value = t_test_result$p.value))
-}
-
 # Print t-test results
 print(t_test_results)
 # Print the LaTeX code for the table
@@ -323,7 +298,6 @@ bd <- bd %>%
 
 
 # Step 2 from the FWL process. Regress the outcome variable against the X_2 variables.
-bd <- bd %>%
 
 bd <- bd %>%
   mutate(log_salaryResidControls = lm(log(y_salary_m_hu) ~ age + I(age^2) + cuentaPropia + formal + hoursWorkUsual + maxEducLevel.f + oficio.f, 
@@ -334,7 +308,7 @@ bd <- bd %>%
 reg_res <- lm(log_salaryResidControls ~ resids_1 + resids_2 + resids_3, data = bd)
 
 #Output regression results in text format
-summary_table <- stargazer(results, results_no_leverage, reg_res,type="text",digits=4, title="Resultados de las regresiones",
+summary_table <- stargazer(results, results_no_leverage, reg_res,type="latex",digits=4, title="Resultados de las regresiones",
                            out="./views/descriptive/regresiones_con_controles.tex")
 
 # b) Part ii. Using FWL with bootstrap
@@ -434,7 +408,7 @@ ggsave("./views/gender_gap/hist_mujerage2.pdf", plot = histogram_3)
 # Generate a range of ages from the minimum to the maximum found in the 'age' variable of 'bd', with increments of 1.
 age_range <- seq(min(bd$age), max(bd$age), by = 1)
 
-# Crea un marco de datos 'conditions' con condiciones para diferentes variables.
+# Create a data frame 'conditions' with conditions for different variables.
 conditions <- data.frame(
   mujer = rep(c(0, 1), each = length(age_range)),  # Values for both sexs (0 y 1), one for each age
   age = rep(age_range, 2),                        # Each age repetated twice, one for each sex
@@ -445,15 +419,15 @@ conditions <- data.frame(
   oficio.f = 45                                  # Fixed value for oficio.f
 )
 
-# Define niveles para maxEducLevel.f y oficio.f
+# Define levels for maxEducLevel.f and job.f
 education_levels <- c(1:7, 9)  # Niveles de educación
 oficio_levels <- 1:99          # Niveles para oficio
 
-# Convierte maxEducLevel.f y oficio.f a factores con niveles especificados
+# Convert maxEducLevel.f and job.f to factors with specified levels.
 conditions$maxEducLevel.f <- factor(conditions$maxEducLevel.f, levels = education_levels)
 conditions$oficio.f <- factor(conditions$oficio.f, levels = oficio_levels)
 
-# Realiza predicciones separadas para hombres y mujeres
+# Perform separate predictions for men and women.
 
 # Perform predictions with confidence intervals
 pred_male <- predict(results, newdata = conditions[conditions$mujer == 0,], interval = "confidence")
@@ -483,23 +457,23 @@ legend('topright', legend = c(NA, 'Línea de Regresión para Hombres', 'Línea d
 
 dev.off()
 
-#Ahora asumiendo, por ejemplo, que se trata de ejecutivos con alto logro educativo
+#Now assuming, for example, that they are executives with high educational achievement.
 
 conditions <- data.frame(
-  mujer = rep(c(0, 1), each = length(age_range)),  # Valores para sexo (0 y 1), cada uno repetido para cada edad
-  age = rep(age_range, 2),                        # Cada edad repetida dos veces, una para cada sexo
-  cuentaPropia = median(bd$cuentaPropia),         # Valor medio de cuentaPropia
-  formal = median(bd$formal),                    # Valor medio de formal
-  hoursWorkUsual = median(bd$hoursWorkUsual),     # Valor medio de hoursWorkUsual
-  maxEducLevel.f = 7,                            # Educación terciaria
-  oficio.f = 21                                  # Ejecutivos o gerentes
+  mujer = rep(c(0, 1), each = length(age_range)),  # Values for gender (0 and 1), each repeated for each age.
+  age = rep(age_range, 2),                        # Each age repeated twice, once for each gender.
+  cuentaPropia = median(bd$cuentaPropia),         # Mean value of selfEmployed.
+  formal = median(bd$formal),                    # Mean value of formal.
+  hoursWorkUsual = median(bd$hoursWorkUsual),     #Mean value of hoursWorkUsual.
+  maxEducLevel.f = 7,                            # Tertiary education
+  oficio.f = 21                                  # Executives or managers
 )
 
-# Define niveles para maxEducLevel.f y oficio.f
+#Define levels for maxEducLevel.f and job.f
 education_levels <- c(1:7, 9)  # Niveles de educación
 oficio_levels <- 1:99          # Niveles para oficio
 
-# Convierte maxEducLevel.f y oficio.f a factores con niveles especificados
+# Convert maxEducLevel.f and job.f to factors with specified levels.
 conditions$maxEducLevel.f <- factor(conditions$maxEducLevel.f, levels = education_levels)
 conditions$oficio.f <- factor(conditions$oficio.f, levels = oficio_levels)
 
@@ -532,23 +506,23 @@ legend('topright', legend = c(NA, 'Línea de Regresión para Hombres', 'Línea d
 
 dev.off()
 
-#Ahora asumiendo, por ejemplo, que se trata de docentes con alto logro educativo
+#Now assuming, for example, that they are teachers with high educational achievement.
 
 conditions <- data.frame(
-  mujer = rep(c(0, 1), each = length(age_range)),  # Valores para sexo (0 y 1), cada uno repetido para cada edad
-  age = rep(age_range, 2),                        # Cada edad repetida dos veces, una para cada sexo
-  cuentaPropia = median(bd$cuentaPropia),         # Valor medio de cuentaPropia
-  formal = median(bd$formal),                    # Valor medio de formal
-  hoursWorkUsual = median(bd$hoursWorkUsual),     # Valor medio de hoursWorkUsual
-  maxEducLevel.f = 7,                            # Educación terciaria
-  oficio.f = 13                                  # Docentes
+  mujer = rep(c(0, 1), each = length(age_range)),  # Values for gender (0 and 1), each repeated for each age.
+  age = rep(age_range, 2),                        # Each age repeated twice, once for each gender.
+  cuentaPropia = median(bd$cuentaPropia),         #  Mean value of selfEmployed.
+  formal = median(bd$formal),                    # Mean value of formal.
+  hoursWorkUsual = median(bd$hoursWorkUsual),     # Mean value of hoursWorkUsual.
+  maxEducLevel.f = 7,                            #Tertiary education
+  oficio.f = 13                                  # Professors
 )
 
-# Define niveles para maxEducLevel.f y oficio.f
+#Define levels for maxEducLevel.f and job.f
 education_levels <- c(1:7, 9)  # Niveles de educación
 oficio_levels <- 1:99          # Niveles para oficio
 
-# Convierte maxEducLevel.f y oficio.f a factores con niveles especificados
+# Convert maxEducLevel.f and job.f to factors with specified levels.
 conditions$maxEducLevel.f <- factor(conditions$maxEducLevel.f, levels = education_levels)
 conditions$oficio.f <- factor(conditions$oficio.f, levels = oficio_levels)
 
@@ -581,23 +555,23 @@ legend('topright', legend = c(NA, 'Línea de Regresión para Hombres', 'Línea d
 
 dev.off()
 
-#Ahora asumiendo, por ejemplo, que se trata de agricultores sin logro educativo
+#Now assuming, for example, that they are farmers without educational achievement
 
 conditions <- data.frame(
-  mujer = rep(c(0, 1), each = length(age_range)),  # Valores para sexo (0 y 1), cada uno repetido para cada edad
-  age = rep(age_range, 2),                        # Cada edad repetida dos veces, una para cada sexo
-  cuentaPropia = median(bd$cuentaPropia),         # Valor medio de cuentaPropia
-  formal = median(bd$formal),                    # Valor medio de formal
-  hoursWorkUsual = median(bd$hoursWorkUsual),     # Valor medio de hoursWorkUsual
-  maxEducLevel.f = 1,                            # Sin logro educativo
-  oficio.f = 61                                  # Agricultores
+  mujer = rep(c(0, 1), each = length(age_range)),  # Values for gender (0 and 1), each repeated for each age.
+  age = rep(age_range, 2),                        # Each age repeated twice, once for each gender.
+  cuentaPropia = median(bd$cuentaPropia),         # Mean value of selfEmployed.
+  formal = median(bd$formal),                    # Mean value of formal.
+  hoursWorkUsual = median(bd$hoursWorkUsual),     #  Mean value of hoursWorkUsual.
+  maxEducLevel.f = 1,                            # No education
+  oficio.f = 61                                  # Farmer
 )
 
-# Define niveles para maxEducLevel.f y oficio.f
+#Define levels for maxEducLevel.f and job.f
 education_levels <- c(1:7, 9)  # Niveles de educación
 oficio_levels <- 1:99          # Niveles para oficio
 
-# Convierte maxEducLevel.f y oficio.f a factores con niveles especificados
+# Convert maxEducLevel.f and job.f to factors with specified levels.
 conditions$maxEducLevel.f <- factor(conditions$maxEducLevel.f, levels = education_levels)
 conditions$oficio.f <- factor(conditions$oficio.f, levels = oficio_levels)
 
