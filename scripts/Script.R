@@ -67,6 +67,7 @@ bd <- bd %>% dplyr::select(y_salary_m_hu, age,
 
 without_imputation <- bd
 df_without_imputation <- na.omit(bd)
+df_without_imputation$mujer <- 1 - df_without_imputation$sex
 ## Here I detect the missing values of the data
 bd_miss <- skim(bd) %>%
   dplyr::select(skim_variable, n_missing)
@@ -228,8 +229,10 @@ abline(v = ci_upper, col = "red", lty = 2)
 
 # a) Estimating the unconditional wage gap
 
-gap_lm_hourly <- lm(log(y_salary_m_hu)~ sex, data = bd)
-gap_lm_hourly_ni <- lm(log(y_salary_m_hu)~ sex, data = df_without_imputation)
+
+gap_lm_hourly <- lm(ln_wage ~ mujer, data = bd)
+gap_lm_hourly_ni <- lm(log(y_salary_m_hu) ~ mujer, data = df_without_imputation)
+stargazer(gap_lm_hourly, gap_lm_hourly_ni)
 
 # b) Part i. Conditional age gap incorporating controls like age, cuentaPropia, formal, hoursWorkUsual, inac, maxEducLevel, oficio
 
@@ -237,7 +240,7 @@ gap_lm_hourly_ni <- lm(log(y_salary_m_hu)~ sex, data = df_without_imputation)
 #bd$oficio.f <- factor(bd$oficio) #Converts variable to factor
 
 #T-test to look at the relevance of the controls
-control_variables <- setdiff(names(bd), c("sex", "maxEducLevel.f", "oficio.f"))
+control_variables <- setdiff(names(bd), c("sex", "mujer", "maxEducLevel.f", "oficio.f"))
 t_test_results <- data.frame(variable = character(), p_value = numeric(), stringsAsFactors = FALSE)
 for (var in control_variables) {
   t_test_result <- t.test(bd[bd$sex == 1, var], bd[bd$sex == 0, var])
