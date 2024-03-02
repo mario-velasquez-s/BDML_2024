@@ -643,7 +643,7 @@ score_cv4<- RMSE(predictions, testing$ln_wage )
 # Model 5 - A third-degree polynomial for age is explored to see if there are 
 # any interesting differences compared to the second-degree polynomial.
 
-form_5<- ln_wage ~  sex + sex*age + sex*I(age^2) + I(age^3) + hoursWorkUsual + oficio.f + maxEducLevel.f + formal+ cuentaPropia + p6426 
+form_5<- ln_wage ~  sex + sex*age + sex*I(age^2) + sex*I(age^3) + hoursWorkUsual + oficio.f + maxEducLevel.f + formal+ cuentaPropia + p6426 
 
 
 modelo_cv5 <- lm(form_5,
@@ -659,7 +659,7 @@ score_cv5<- RMSE(predictions, testing$ln_wage )
 # explored in this model, which is designed to address existing gaps in certain 
 # sectors with higher compensation where men dominate.
 
-form_6<- ln_wage ~  sex + sex*age + sex*I(age^2) + hoursWorkUsual + oficio.f + maxEducLevel.f + formal+ cuentaPropia + p6426
+form_6<- ln_wage ~  sex + sex*age + sex*I(age^2) + sex*I(age^3) + sex*hoursWorkUsual + oficio.f + maxEducLevel.f + formal+ cuentaPropia + p6426
 
 modelo_cv6 <- lm(form_6,
                  data = training)
@@ -672,7 +672,7 @@ score_cv6<- RMSE(predictions, testing$ln_wage )
 
 # Model 7 - 
 
-form_7<- ln_wage ~  sex + sex*age + sex*I(age^2) + sex*hoursWorkUsual + sex*oficio.f + sex*maxEducLevel.f + sex*formal+ sex*cuentaPropia + sex*p6426 
+form_7<- ln_wage ~  sex + sex*age + sex*I(age^2) + sex*I(age^3) + sex*hoursWorkUsual + oficio.f + sex*maxEducLevel.f + sex*formal+ sex*cuentaPropia + sex*p6426
 
 
 modelo_cv7 <- lm(form_7,
@@ -684,15 +684,30 @@ predictions <- predict(modelo_cv7, testing)
 
 score_cv7<- RMSE(predictions, testing$ln_wage )
 
+# Model 8 - 
+
+form_8<- ln_wage ~  sex + sex*age + sex*I(age^2) + sex*I(age^3) + sex*hoursWorkUsual + sex*oficio.f + sex*maxEducLevel.f + sex*formal+ sex*cuentaPropia + sex*p6426
+
+
+modelo_cv8 <- lm(form_8,
+                 data = training)
+
+# Prediction
+predictions <- predict(modelo_cv8, testing)
+
+
+score_cv8<- RMSE(predictions, testing$ln_wage )
+
+
 
 
 
   # b. Comparing models based on RMSE
 
 
-scores_cv<- data.frame( Model= c(1, 2, 3, 4, 5, 6, 7),
+scores_cv<- data.frame( Model= c(1, 2, 3, 4, 5, 6, 7, 8),
                      RMSE_vsa= c(score_cv1, score_cv2, score_cv3, score_cv4, 
-                                 score_cv5, score_cv6, score_cv7))
+                                 score_cv5, score_cv6, score_cv7, score_cv8))
 
 scores_cv
 # Models 6 and 7 have de lowest RMSE
