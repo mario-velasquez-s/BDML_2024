@@ -713,10 +713,6 @@ scores_cv
 # Models 6 and 7 have de lowest RMSE
 
 
-form_8 <- ln_wage ~ sex + poly(age,2, raw = TRUE) + cuentaPropia + formal + hoursWorkUsual + maxEducLevel.f + oficio.f
-modelo_cv8 <- lm(form_8,
-                 data = training)
-score_cv8<- RMSE(predictions, testing$ln_wage )
 
   # c. Comments on results 
 
