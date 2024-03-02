@@ -263,6 +263,9 @@ results <- lm(log(y_salary_m_hu) ~ mujer + mujer*age + mujer*I(age^2) + cuentaPr
 bd<- bd %>% mutate(leverage = hatvalues(results))
 bd<- bd %>% mutate(residuals= results$residuals)
 
+results2 <- lm(log(y_salary_m_hu) ~ mujer + mujer*age + mujer*I(age^2), data = bd)
+results3 <- lm(log(y_salary_m_hu) ~ mujer + age + I(age^2), data = bd)
+
 # Visualize leverage versus residuals
 leverage <- ggplot(bd , aes(y = leverage , x = residuals  )) +
   geom_point() + # add points
@@ -419,6 +422,7 @@ conditions <- data.frame(
   oficio.f = 45                                  # Fixed value for oficio.f
 )
 
+
 # Define levels for maxEducLevel.f and job.f
 education_levels <- c(1:7, 9)  # Niveles de educación
 oficio_levels <- 1:99          # Niveles para oficio
@@ -430,8 +434,8 @@ conditions$oficio.f <- factor(conditions$oficio.f, levels = oficio_levels)
 # Perform separate predictions for men and women.
 
 # Perform predictions with confidence intervals
-pred_male <- predict(results, newdata = conditions[conditions$mujer == 0,], interval = "confidence")
-pred_female <- predict(results, newdata = conditions[conditions$mujer == 1,], interval = "confidence")
+pred_male <- predict(results2, newdata = conditions[conditions$mujer == 0,], interval = "confidence")
+pred_female <- predict(results2, newdata = conditions[conditions$mujer == 1,], interval = "confidence")
 
 pdf("./views/gender_gap/ambulantes.pdf")
 
