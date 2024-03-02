@@ -23,7 +23,8 @@ p_load(rio, # import/export data
        ggplot2,
        visdat,
        caret,
-       xtable)   # For predictive model assessment
+       xtable,  # For predictive model assessment
+       fixest)  # Fixed effects 
 
 # 1: Initial Data Manipulation -----------------------------------------------
 set.seed(999)
@@ -597,8 +598,7 @@ score_cv1 # 10584.75
 
 # Model 2 - unconditional gender wage gap
 # Training
-form_2<- ln_wage~ sex
-
+form_2<- ln_wage ~ sex
 modelo_cv2 <- lm(form_2,
                data = training)
 # Prediction
@@ -608,13 +608,12 @@ predictions <- predict(modelo_cv2, testing)
 score_cv2<- RMSE(predictions, testing$ln_wage )
 score_cv2 # 10584.76
 
-# Model 3 - In this model, age, gender, occupation, highest level of education, 
+# Model 3 - From question 4, age, gender, occupation, highest level of education, 
 # whether the job is formal or not, and whether the job is independent or not are
 # taken into account.
 
 
-
-form_3<- ln_wage ~ sex +age + maxEducLevel.f 
+form_3<- ln_wage ~ sex + sex*age + sex*I(age^2) + hoursWorkUsual + oficio.f + maxEducLevel.f + formal+ cuentaPropia
 
 modelo_cv3 <- lm(form_3,
                  data = training)
@@ -629,7 +628,7 @@ score_cv3<- RMSE(predictions, testing$ln_wage )
 # as well as the duration of current job, is explored, without considering 
 # whether it is formal employment or self-employment.
 
-form_4<- ln_wage ~  sex + oficio.f + age + I(age^2) + maxEducLevel.f  + p6426 
+form_4<- ln_wage ~  sex + sex*age + sex*I(age^2) + hoursWorkUsual + oficio.f + maxEducLevel.f + formal+ cuentaPropia + p6426 
 
 modelo_cv4 <- lm(form_4, 
                  data = training)
@@ -644,7 +643,8 @@ score_cv4<- RMSE(predictions, testing$ln_wage )
 # Model 5 - A third-degree polynomial for age is explored to see if there are 
 # any interesting differences compared to the second-degree polynomial.
 
-form_5<- ln_wage ~  sex + oficio.f + age + I(age^2) + I(age^3) + maxEducLevel.f 
+form_5<- ln_wage ~  sex + sex*age + sex*I(age^2) + I(age^3) + hoursWorkUsual + oficio.f + maxEducLevel.f + formal+ cuentaPropia + p6426 
+
 
 modelo_cv5 <- lm(form_5,
                  data = training)
@@ -659,7 +659,7 @@ score_cv5<- RMSE(predictions, testing$ln_wage )
 # explored in this model, which is designed to address existing gaps in certain 
 # sectors with higher compensation where men dominate.
 
-form_6<- ln_wage ~  sex + oficio + sex*oficio.f + age + I(age^2) + sex*formal + formal + maxEducLevel.f + p6426  + cuentaPropia
+form_6<- ln_wage ~  sex + sex*age + sex*I(age^2) + hoursWorkUsual + oficio.f + maxEducLevel.f + formal+ cuentaPropia + p6426
 
 modelo_cv6 <- lm(form_6,
                  data = training)
@@ -672,7 +672,8 @@ score_cv6<- RMSE(predictions, testing$ln_wage )
 
 # Model 7 - 
 
-form_7<- ln_wage ~  sex + oficio.f + maxEducLevel.f*sex + age + I(age^2) + formal + maxEducLevel.f + p6426  + cuentaPropia
+form_7<- ln_wage ~  sex + sex*age + sex*I(age^2) + sex*hoursWorkUsual + sex*oficio.f + sex*maxEducLevel.f + sex*formal+ sex*cuentaPropia + sex*p6426 
+
 
 modelo_cv7 <- lm(form_7,
                  data = training)
