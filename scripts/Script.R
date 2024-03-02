@@ -236,8 +236,8 @@ stargazer(gap_lm_hourly, gap_lm_hourly_ni)
 
 # b) Part i. Conditional age gap incorporating controls like age, cuentaPropia, formal, hoursWorkUsual, inac, maxEducLevel, oficio
 
-#bd$maxEducLevel.f <- factor(bd$maxEducLevel) #Converts variable to factor
-#bd$oficio.f <- factor(bd$oficio) #Converts variable to factor
+bd$maxEducLevel.f <- factor(bd$maxEducLevel) #Converts variable to factor
+bd$oficio.f <- factor(bd$oficio) #Converts variable to factor
 
 #T-test to look at the relevance of the controls
 control_variables <- setdiff(names(bd), c("sex", "mujer", "maxEducLevel.f", "oficio.f"))
@@ -248,17 +248,13 @@ for (var in control_variables) {
 }
 
 print(t_test_results)
-
-latex_table <- xtable(t_test_results)
 # Print the LaTeX code
-print(latex_table, include.rownames = FALSE)
+xtable(t_test_results)
 
 # When applying FWL, the first vector of explanatory variables (#X_1) will only contain the variable female
 
-
 # First, perform the regression without the FWL method to know which results should we expect from the FWL process since outcomes are the same
-results <- lm(log(y_salary_m_hu) ~ sex + poly(age,2, raw = TRUE) + cuentaPropia + formal + hoursWorkUsual + maxEducLevel.f + oficio.f, data = bd)
-
+results <- lm(log(y_salary_m_hu) ~ mujer + mujer*age + mujer*I(age^2) + cuentaPropia + formal + hoursWorkUsual + maxEducLevel.f + oficio.f, data = bd)
 bd<- bd %>% mutate(leverage = hatvalues(results))
 bd<- bd %>% mutate(residuals= results$residuals)
 
@@ -277,26 +273,37 @@ cutt <- 3*p
 bd_no_leverage <-  bd %>% 
   dplyr:: filter(leverage<= cutt)
 
-results_no_leverage <- lm(log(y_salary_m_hu) ~ sex + poly(age,2, raw = TRUE) + cuentaPropia + formal + hoursWorkUsual + maxEducLevel.f + oficio.f, data = bd_no_leverage)
-
+results_no_leverage <- lm(log(y_salary_m_hu) ~ mujer + mujer*age + mujer*I(age^2) + cuentaPropia + formal + hoursWorkUsual + maxEducLevel.f + oficio.f, data = bd_no_leverage)
+stargazer(results, results_no_leverage, type = "text")
 
 #Step 1 from the FWL process. Regress all the X_2 variables against X_1 (sex)
 
 bd <- bd %>%
-  mutate(femaleResidControls = lm(sex ~ poly(age,2, raw = TRUE) + cuentaPropia + formal + hoursWorkUsual + maxEducLevel.f + oficio.f, data = .)$residuals)
+  mutate(resids_1 = lm(mujer ~ cuentaPropia + formal + hoursWorkUsual + maxEducLevel.f + oficio.f, data = .)$residuals)
+
+bd <- bd %>%
+  mutate(resids_2 = lm(age ~ cuentaPropia + formal + hoursWorkUsual + maxEducLevel.f + oficio.f, data = .)$residuals)
+
+bd <- bd %>%
+  mutate(resids_3 = lm(I(age^2) ~ cuentaPropia + formal + hoursWorkUsual + maxEducLevel.f + oficio.f, data = .)$residuals)
+
+bd <- bd %>%
+  mutate(resids_4 = lm(mujer*age ~ cuentaPropia + formal + hoursWorkUsual + maxEducLevel.f + oficio.f, data = .)$residuals)
+
+bd <- bd %>%
+  mutate(resids_5 = lm(mujer*I(age^2) ~ cuentaPropia + formal + hoursWorkUsual + maxEducLevel.f + oficio.f, data = .)$residuals)
 
 
 #Setp 2 from the FWL process. Regress the outcome variable against the X_2 variables.
 
 bd <- bd %>%
-  mutate(log_salaryResidControls = lm(log(y_salary_m_hu) ~ poly(age,2, raw = TRUE) + cuentaPropia + formal + 
-                                        hoursWorkUsual + maxEducLevel.f + oficio.f, 
+  mutate(log_salaryResidControls = lm(log(y_salary_m_hu) ~ cuentaPropia + formal + hoursWorkUsual + maxEducLevel.f + oficio.f, 
                                       data = .)$residuals)
 
 #Step 3 from the FWL process. Regress the residuals from step 2 as the result variable against the residuals from step 1.
 
-reg_res <- lm(log_salaryResidControls ~ femaleResidControls, data = bd)
-summary_table <- stargazer(results, results_no_leverage, reg_res,type="latex",digits=4)
+reg_res <- lm(log_salaryResidControls ~ resids_1 + resids_2 + resids_3 + resids_4 + resids_5, data = bd)
+summary_table <- stargazer(results, reg_res,type="text",digits=4)
 
 #Verificar que la suma de residuales de igual
 sum(resid(results)^2)
@@ -311,20 +318,33 @@ eta_mod1 <- rep(0,1000)
 #Run the two previous lines before the loop
 
 for(i in 1:B){
-  
+  print(i)
   bd_sample<- sample_frac(bd,size=1,replace=TRUE) #takes a sample with replacement of the same size of the original sample (1 or 100%)
   
   bd <- bd %>%
-    mutate(reg_1_bootstrap = lm(sex ~ poly(age,2, raw = TRUE) + cuentaPropia + formal + hoursWorkUsual + maxEducLevel.f + oficio.f, data = bd_sample)$residuals)
+    mutate(reg_1_bootstrap = lm(mujer ~ cuentaPropia + formal + hoursWorkUsual + maxEducLevel.f + oficio.f, data = .)$residuals)
   
   bd <- bd %>%
-    mutate(reg_2_bootstrap = lm(log(y_salary_m_hu) ~ poly(age,2, raw = TRUE) + cuentaPropia + formal + 
+    mutate(reg_2_bootstrap = lm(age ~ cuentaPropia + formal + hoursWorkUsual + maxEducLevel.f + oficio.f, data = .)$residuals)
+  
+  bd <- bd %>%
+    mutate(reg_3_bootstrap = lm(I(age^2) ~ cuentaPropia + formal + hoursWorkUsual + maxEducLevel.f + oficio.f, data = .)$residuals)
+  
+  bd <- bd %>%
+    mutate(reg_4_bootstrap = lm(mujer*age ~ cuentaPropia + formal + hoursWorkUsual + maxEducLevel.f + oficio.f, data = .)$residuals)
+  
+  bd <- bd %>%
+    mutate(reg_5_bootstrap = lm(mujer*I(age^2) ~ cuentaPropia + formal + hoursWorkUsual + maxEducLevel.f + oficio.f, data = .)$residuals)
+  
+  
+  bd <- bd %>%
+    mutate(reg_6_bootstrap = lm(log(y_salary_m_hu) ~ poly(age,2, raw = TRUE) + cuentaPropia + formal + 
                                   hoursWorkUsual + maxEducLevel.f + oficio.f, 
                                 data = bd_sample)$residuals)
   
-  reg_3_bootstrap <- lm(reg_2_bootstrap ~ reg_1_bootstrap, data = bd_sample)
+  reg_3_bootstrap <- lm(reg_6_bootstrap ~ reg_1_bootstrap + reg_2_bootstrap + reg_3_bootstrap + reg_4_bootstrap + reg_5_bootstrap, data = bd_sample)
   
-  coefs<-reg_3_bootstrap$coefficients[2] # gets the coefficient of interest that coincides with the elasticity of demand
+  coefs<-reg_3_bootstrap$coefficients[2:6] # gets the coefficient of interest that coincides with the elasticity of demand
   
   eta_mod1[i]<-coefs #saves it in the above vector
 }
