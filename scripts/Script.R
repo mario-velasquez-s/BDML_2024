@@ -613,15 +613,19 @@ bd$oficio.f <- factor(bd$oficio)
 
   set.seed(10101)  # Set set for replicability purposes 
 
-
+# The data partition is created
 inTrain <- createDataPartition(
   y = bd$ln_wage,  ## the outcome data are needed
   p = .70, ## The percentage of data in the
   list = FALSE
 )
 
+# The two relevant data sets are set up for the predictiva portion of this exercise
 training <- bd[ inTrain,]
 testing  <- bd[-inTrain,]
+
+# These changes were included due to problems with the training model for this 
+# variable with a high number of categories
 
 training <- training %>% filter(oficio!=96) 
 testing <- testing %>% filter(oficio!=96) 
@@ -631,7 +635,7 @@ testing <- testing %>% filter(oficio!=78)
 
 
 
-# Model 1 - modelo punto 3
+# Model 1 - model exercise 3
 # Training
 form_1<- ln_wage ~ age + I(age^2) 
 
@@ -675,8 +679,7 @@ score_cv3<- RMSE(predictions, testing$ln_wage )
 
 
 # Model 4 - For this model, the quadratic relationship between age and income, 
-# as well as the duration of current job, is explored, without considering 
-# whether it is formal employment or self-employment.
+# as well as the duration of current job, is explored
 
 form_4<- ln_wage ~  sex + sex*age + sex*I(age^2) + age + I(age^2) + hoursWorkUsual + oficio.f + maxEducLevel.f + formal+ cuentaPropia + p6426 
 
@@ -705,11 +708,11 @@ predictions <- predict(modelo_cv5, testing)
 
 score_cv5<- RMSE(predictions, testing$ln_wage )
 
-# Model 6 - The possible interaction between occupation type and gender is 
-# explored in this model, which is designed to address existing gaps in certain 
-# sectors with higher compensation where men dominate.
+# Model 6 - The possible interaction between hours worked weekly and gender is 
+# explored in this model, which is designed to address existing gap for women  
+# in the workforce that have to take time off work, or work less intensely. 
 
-form_6<- ln_wage ~  sex + sex*age + sex*I(age^2) + sex*I(age^3) + age + I(age^2)  + I(age^3) + sex*hoursWorkUsual + oficio.f + maxEducLevel.f + formal+ cuentaPropia + p6426
+form_6<- ln_wage ~  sex + sex*age + sex*I(age^2) + sex*I(age^3) + age + I(age^2)  + I(age^3) + sex*hoursWorkUsual + hoursWorkUsual + oficio.f + maxEducLevel.f + formal+ cuentaPropia + p6426
 
 modelo_cv6 <- lm(form_6,
                  data = training)
@@ -720,7 +723,8 @@ predictions <- predict(modelo_cv6, testing)
 
 score_cv6<- RMSE(predictions, testing$ln_wage )
 
-# Model 7 - 
+# Model 7 - Further interactions are included in this model, regarding education, 
+# job formality, independent work, and a proxy for experience (time at job=p6426)
 
 form_7<- ln_wage ~  sex + sex*age + sex*I(age^2) + sex*I(age^3) + age + I(age^2)  + I(age^3) + sex*hoursWorkUsual + oficio.f + sex*maxEducLevel.f + sex*formal+ sex*cuentaPropia + sex*p6426
 
@@ -734,7 +738,8 @@ predictions <- predict(modelo_cv7, testing)
 
 score_cv7<- RMSE(predictions, testing$ln_wage )
 
-# Model 8 - 
+# Model 8 - For this last model we exhaust our options in terms of interactions 
+# we interact sex and type of job, additionally to previous changes
 
 form_8<- ln_wage ~  sex + sex*age + sex*I(age^2) + sex*I(age^3) + age + I(age^2)  + I(age^3) + sex*hoursWorkUsual + sex*oficio.f + sex*maxEducLevel.f + sex*formal+ sex*cuentaPropia + sex*p6426
 
@@ -768,12 +773,13 @@ scores_cv
 
   # d. LOOCV for the two models with the lowest RMSE
 
+# The function that implements LOOCV is defined, with paralleliczation turned on
 ctrl <- trainControl(
   method = "LOOCV",
   verboseIter = TRUE,
   allowParallel = TRUE) 
 
-
+# The first LOOCV is done with the second best RMSE
 modelo_loocv1 <- train(form_6,
                   data = bd,
                   method = 'lm', 
@@ -781,6 +787,7 @@ modelo_loocv1 <- train(form_6,
 
 head(modelo_loocv1$pred)
 
+# The second LOOCV is done with the best RMSE
 score_loocv1<-RMSE(modelo_loocv1$pred$pred, bd$ln_wage)
 # 0.4847495
 
