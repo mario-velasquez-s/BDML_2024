@@ -147,7 +147,7 @@ bd$mujer <- 1 - bd$sex #Crear variable con mujer igual a 1"
 names(bd)
 
 ##Summary of all variables
-des_vars <- c("age", "mujer", "hoursWorkUsual", "formal", "cuentaPropia")
+des_vars <- c("age", "mujer", "hoursWorkUsual", "formal", "cuentaPropia", "p6426")
 stargazer::stargazer(as.data.frame(bd[,des_vars]), type="latex", title="Descriptivas de las variables explicatorias",
                      out="./views/descriptive/descriptivas_numericas.tex")
 
