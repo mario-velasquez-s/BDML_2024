@@ -1,10 +1,9 @@
 # BDML 2024
 
-# Proyecto de Análisis Demográfico y Laboral en Bogotá
+# Problem Set 1 - Análisis de los principales determinantes de los ingresos laborales en Bogotá
 
 ## Sobre el Proyecto:
 
-- El proyecto se estructura en diversas secciones con objetivos específicos.
 - Se realiza un análisis descriptivo de los datos obtenidos a través del scraping de un sitio web que contiene información demográfica y laboral de individuos en Bogotá.
 - Se enfoca en personas empleadas mayores de 18 años y aborda el desafío de manejar observaciones con datos faltantes o ingresos nulos.
 - Estima el perfil de ingresos por edad, siguiendo la evidencia de la economía laboral que sugiere un patrón predecible en el cual los salarios tienden a ser bajos en trabajadores jóvenes, aumentan con la edad y alcanzan su máximo alrededor de los 50 años.
