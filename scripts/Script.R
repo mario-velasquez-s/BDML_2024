@@ -408,6 +408,39 @@ ggsave("./views/gender_gap/hist_mujerage2.pdf", plot = histogram_3)
 # Generate a range of ages from the minimum to the maximum found in the 'age' variable of 'bd', with increments of 1.
 age_range <- seq(min(bd$age), max(bd$age), by = 1)
 
+#Plotting a simple model
+results2 <- lm(log(y_salary_m_hu) ~ mujer + mujer*age + mujer*I(age^2), data = bd)
+conditions <- data.frame(
+  mujer = rep(c(0, 1), each = length(age_range)),  # Values for both sexs (0 y 1), one for each age
+  age = rep(age_range, 2)                    # Each age repetated twice, one for each sex
+)
+
+pred_male <- predict(results2, newdata = conditions[conditions$mujer == 0,], interval = "confidence")
+pred_female <- predict(results2, newdata = conditions[conditions$mujer == 1,], interval = "confidence")
+
+pdf("./views/gender_gap/hombres_mujeres.pdf")
+
+# Extract upper and lower confidence limits
+lower_male <- pred_male[, "lwr"]
+upper_male <- pred_male[, "upr"]
+lower_female <- pred_female[, "lwr"]
+upper_female <- pred_female[, "upr"]
+
+# Plot the scatter plot with confidence intervals
+plot(bd$age, log(bd$y_salary_m_hu), col = 'blue', xlab = 'Edad', ylab = 'Log Salario', pch = NA, ylim = c(8.1,9.7))
+lines(age_range, pred_male[, "fit"], col = 'red', lwd = 2)  # Regression line for males
+lines(age_range, pred_female[, "fit"], col = 'green', lwd = 2)  # Regression line for females
+lines(age_range, upper_male, col = 'red', lty = 2)  # Upper confidence interval for males
+lines(age_range, lower_male, col = 'red', lty = 2)  # Lower confidence interval for males
+lines(age_range, upper_female, col = 'green', lty = 2)  # Upper confidence interval for females
+lines(age_range, lower_female, col = 'green', lty = 2)  # Lower confidence interval for females
+
+# Add legend (ignoring the label for 'Salarios Reales')
+legend('topright', legend = c(NA, 'Salario estimado para Hombres', 'Salario estimado para Mujeres', 'Intervalo de Confianza para Hombres', 'Intervalo de Confianza para Mujeres'), 
+       col = c('blue', 'red', 'green', 'red', 'green'), lty = c(NA, 1, 1, 2, 2), lwd = c(NA, 2, 2, 1, 1))
+
+dev.off()
+
 # Create a data frame 'conditions' with conditions for different variables.
 conditions <- data.frame(
   mujer = rep(c(0, 1), each = length(age_range)),  # Values for both sexs (0 y 1), one for each age
